@@ -1,0 +1,25 @@
+{
+  "name": "dicedb-client",
+  "module": "index.ts",
+  "type": "module",
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "scripts": {
+    "build": "bun build index.ts --outdir=dist --minify",
+    "dev": "bun index.ts",
+    "test": "bun test",
+    "lint": "bun run eslint .",
+    "format": "bun run prettier . --write"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "google-protobuf": "^3.21.4",
+    "protobufjs": "6.6.4"
+  },
+  "trustedDependencies": [
+    "protobufjs"
+  ]
+}
