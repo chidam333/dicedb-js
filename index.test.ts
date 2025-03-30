@@ -2,137 +2,186 @@ import { expect, test, mock, spyOn, beforeEach, afterEach } from "bun:test";
 import { NewClient, type Client } from "./index"; // Import Client type
 // Import Command and the Response *constructor* (renamed) from the generated JS file
 const { Command, Response: DiceResponseProto } = require("./wire/proto/cmd_pb");
-// Import the actual module for potential spying later if needed (not used in this diff)
-// import * as clientModule from "./index.js";
 
 // --- Mock Setup ---
-// We will mock methods directly on the 'client' instance within the relevant test.
-// Using beforeEach/afterEach ensures mocks are reset between tests.
+let connectSpy: ReturnType<typeof spyOn>;
+let consoleErrorSpy: ReturnType<typeof spyOn>;
 
 beforeEach(() => {
-    // No global mocks needed for this approach, but good practice for setup/teardown
+    // Mock Bun.connect before each test to prevent actual connections
+    connectSpy = spyOn(Bun, 'connect').mockImplementation(async (options) => {
+        // Default mock behavior: throw an error if called unexpectedly.
+        // Tests specifically needing a connection (like 'valid connection')
+        // should override this with .mockResolvedValueOnce or .mockRejectedValueOnce.
+        console.log(`Bun.connect mock called unexpectedly with: ${JSON.stringify(options)}`);
+        throw new Error(`Mock Bun.connect: Unexpected call`);
+    });
+
+    // Suppress console.error output during tests unless explicitly restored
+    consoleErrorSpy = spyOn(console, 'error').mockImplementation(() => {});
 });
 
 afterEach(() => {
-    // Restore any mocks/spies created during the test
+    // Restore all mocks defined with spyOn or mock() after each test
     mock.restore();
 });
 
 // --- Test Cases ---
 
 test("invalid port", async () => {
-    // This test might still briefly attempt a real connection, ideally mock Bun.connect
-    const consoleErrorSpy = spyOn(console, 'error').mockImplementation(() => {}); // Suppress console.error
+    // NewClient should validate the port *before* attempting to connect
     const { client, error } = await NewClient("localhost", -1);
+
     expect(error).toBeDefined();
     expect(client).toBeNull();
-    // Add specific error type/message assertion if possible
-    expect(error?.message).toMatch(/port|range/i); // Bun might throw range error
-
-    consoleErrorSpy.mockRestore(); // Restore console.error after the test
+    expect(error?.message).toMatch(/port|range/i); // Check for the validation error
+    // Crucially, verify that Bun.connect was *not* called due to early validation exit
+    expect(connectSpy).not.toHaveBeenCalled();
+    // consoleErrorSpy will catch the internal error log from NewClient
+    expect(consoleErrorSpy).toHaveBeenCalled();
 });
 
 test("unable to connect", async () => {
-    // This test currently relies on the port being unavailable.
-    // For reliability (especially in CI), Bun.connect should be mocked to reject.
-    const { client, error } = await NewClient("localhost", 9999);
+    // Configure the Bun.connect mock to *reject* for this specific test
+    const mockConnectionError = new Error("ECONNREFUSED - Mock"); // Simulate a connection error
+    connectSpy.mockRejectedValueOnce(mockConnectionError);
+
+    const { client, error } = await NewClient("localhost", 9999); // Port number is irrelevant now
+
     expect(error).toBeDefined();
     expect(client).toBeNull();
-    expect(error?.message).toMatch(/connect|refused|timeout/i); // Check for connection errors
+    // Check that the error returned is the specific one we mocked
+    expect(error).toBe(mockConnectionError);
+    // Verify Bun.connect was called (once)
+    expect(connectSpy).toHaveBeenCalledTimes(1);
+    // Verify it was called with expected arguments (optional but good)
+    expect(connectSpy).toHaveBeenCalledWith(expect.objectContaining({
+        hostname: 'localhost',
+        port: 9999,
+    }));
+    // consoleErrorSpy will catch the internal error logs from NewClient/newConn
+    expect(consoleErrorSpy).toHaveBeenCalled();
 });
 
-test("valid connection", async () => {
-    // This test REQUIRES a running server on localhost:7379 OR Bun.connect mocking.
-    // Skipping detailed mocking for this example. Remove '.skip' if you have a live server for this specific test.
-    test.skip("valid connection (requires live server or Bun.connect mock)", async () => {
-    const { client, error } = await NewClient("localhost", 7379);
-    expect(client).toBeDefined();
-    expect(error).toBeNull();
-    // Remember to close the client connection if the test succeeds and creates one
-    client?.conn?.end();
-    client?.watchConn?.end();
+// Updated valid connection test using mocks
+test("valid connection (mocked)", async () => {
+    // 1. Mock a successful connection returning a basic mock socket
+    const mockSocket = {
+        readyState: 'open',
+        write: mock(() => {}), // Mock write function
+        end: mock(() => { mockSocket.readyState = 'closed'; }), // Mock end function
+        setKeepAlive: mock(() => true),
+        // Add any other methods the code might call on the socket during setup
+    };
+    connectSpy.mockResolvedValueOnce(mockSocket as any); // Mock successful connection
+
+    // 2. Mock the Handshake Response
+    // NewClient calls client.Fire internally for handshake after connection.
+    // We need client.Fire to return a successful handshake response ("OK").
+    // We achieve this by passing a mocked Fire function via NewClient's options.
+    const okHandshakeResponse = new DiceResponseProto();
+    okHandshakeResponse.setVStr("OK");
+
+    // Create a mock Fire function specifically for the handshake
+    const mockHandshakeFire = mock(async (cmd: InstanceType<typeof Command>) => {
+         if (cmd.getCmd() === "HANDSHAKE") {
+             return { response: okHandshakeResponse, error: null };
+         }
+         throw new Error("Mock Fire called with unexpected command during setup");
     });
+
+    // 3. Call NewClient, providing the mock Fire implementation
+    const { client, error } = await NewClient("localhost", 7379, { Fire: mockHandshakeFire });
+
+    // 4. Assertions
+    expect(error).toBeNull(); // Mock connection and mock handshake succeeded
+    expect(client).toBeDefined();
+    expect(client?.id).toBeString();
+    expect(client?.conn).toBe(mockSocket); // Ensure the mock socket was assigned
+
+    // Verify mocks were called correctly
+    expect(connectSpy).toHaveBeenCalledTimes(1); // Only the main connection attempt
+    expect(connectSpy).toHaveBeenCalledWith(expect.objectContaining({ hostname: 'localhost', port: 7379 }));
+    expect(mockHandshakeFire).toHaveBeenCalledTimes(1); // The handshake command
+
+    // Check the command passed to the mock Fire
+    const handshakeCmd = mockHandshakeFire.mock.calls[0][0];
+    expect(handshakeCmd.getCmd()).toBe("HANDSHAKE");
+    expect(handshakeCmd.getArgsList()).toEqual([client?.id, "main"]); // Ensure correct handshake args
+
+    // Clean up the mock client's connections (calls mock end)
+    client?.conn?.end();
+    client?.watchConn?.end(); // In case a watch connection was also mocked/created
+
+    // In this mocked test, console error shouldn't have been called
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
 });
+
 
 test("set, get, Fire, FireString (mocked)", async () => {
+    // This test already bypasses NewClient and mocks Fire/FireString directly.
+    // It remains unchanged and is unaffected by the Bun.connect mocking.
+
     // 1. Create a simplified client object structure sufficient for mocking.
-    //    We bypass NewClient entirely to avoid actual connection attempts.
-    const mockClient: Partial<Client> = { // Use Partial for easier mocking
+    const mockClient: Partial<Client> = {
         id: "mock-client-test-123",
-        conn: null, // No real connection needed
+        conn: null,
         watchConn: null,
         host: 'localhost',
-        port: 7379, // Store for context, not used by mocks here
+        port: 7379,
         watchCh: [],
         watchIterator: null,
         data: null,
-        // Methods will be mocked below
     };
 
-    // 2. Create Mock Responses using the imported Protobuf constructor
+    // 2. Create Mock Responses
     const okResponse = new DiceResponseProto();
     okResponse.setVStr("OK");
-
     const lmaoResponse = new DiceResponseProto();
     lmaoResponse.setVStr("lmao");
 
-    // 3. Mock the client's methods using bun:test's mock()
-    //    Alternatively, use spyOn(mockClient, 'Fire').mockImplementation(...)
+    // 3. Mock the client's methods
     const mockFire = mock(async (cmd: InstanceType<typeof Command>): Promise<{ response: InstanceType<typeof DiceResponseProto> | null; error: Error | null }> => {
-        // console.log(`Mock Fire called with cmd: ${cmd.getCmd()}, args: ${cmd.getArgsList()}`);
         if (cmd.getCmd() === "SET" && cmd.getArgsList()[0] === "k1" && cmd.getArgsList()[1] === "lmao") {
             return { response: okResponse, error: null };
         }
-        // Add more command checks if needed for other tests
         return { response: null, error: new Error(`Mock Fire - Unhandled command: ${cmd.getCmd()}`) };
     });
-
     const mockFireString = mock(async (cmdStr: string): Promise<{ response: InstanceType<typeof DiceResponseProto> | null; error: Error | null }> => {
-        // console.log(`Mock FireString called with: ${cmdStr}`);
         if (cmdStr === "GET k1") {
             return { response: lmaoResponse, error: null };
         }
-        // If FireString was used for SET too:
-        // if (cmdStr === "SET k1 lmao") {
-        //     return { response: okResponse, error: null };
-        // }
         return { response: null, error: new Error(`Mock FireString - Unhandled command string: ${cmdStr}`) };
     });
 
-    // Assign mocks to our mock client object
     mockClient.Fire = mockFire;
     mockClient.FireString = mockFireString;
-
-    // Cast to Client for type safety in the test, acknowledging it's a partial mock
     const client = mockClient as Client;
 
-    // 4. Prepare the Command object for the Fire call
+    // 4. Prepare Command
     const cmd = new Command();
     cmd.setCmd("SET");
     cmd.setArgsList(["k1", "lmao"]);
 
-    // 5. Run Test Logic using the mocked client methods
+    // 5. Run Test Logic
     const { response: setResponse, error: setError } = await client.Fire(cmd);
     const { response: response2, error: setError2 } = await client.FireString("GET k1");
 
-    // 6. Assertions against the Mock Responses
-    // Check SET command result
+    // 6. Assertions
     expect(setError).toBeNull();
     expect(setResponse).toBeDefined();
-    // Check the value from the *mocked* OK response object
     expect(setResponse?.getVStr()).toBe("OK");
-
-    // Check GET command result
     expect(setError2).toBeNull();
     expect(response2).toBeDefined();
-     // Check the value from the *mocked* lmao response object
     expect(response2.getVStr()).toBe("lmao");
 
-    // 7. Optional: Assert that the mocks were called as expected
+    // 7. Assert mock calls
     expect(mockFire).toHaveBeenCalledTimes(1);
-    // Check if mockFire was called with the exact command object instance
     expect(mockFire).toHaveBeenCalledWith(cmd);
-
     expect(mockFireString).toHaveBeenCalledTimes(1);
     expect(mockFireString).toHaveBeenCalledWith("GET k1");
+
+    // This test shouldn't involve connection attempts or errors
+    expect(connectSpy).not.toHaveBeenCalled();
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
 });
