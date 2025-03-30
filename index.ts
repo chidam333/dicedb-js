@@ -337,9 +337,18 @@ export async function NewClient (
     port: number,
     option?: Partial<Pick<Client, 'id' | 'Fire' | 'FireString' | 'WatchChGetter'>> // More specific options type
 ): Promise<{ client: Client | null; error: null | Error }> {
+    const clientId = option?.id ?? randomUUIDv7(); // Determine ID first
+
+    // --- BEGIN ADDED VALIDATION ---
+    if (port === undefined || port === null || !Number.isInteger(port) || port < 0 || port > 65535) {
+        const err = new RangeError(`Invalid port number provided. Port must be an integer between 0 and 65535. Received: ${port}`);
+        console.error(`[${clientId}] ${err.message}`);
+        return { client: null, error: err };
+    }
+    // --- END ADDED VALIDATION ---
+
     // Use the type alias here for the array type
     const watchCh: Array<DiceResponse> = [];
-    const clientId = option?.id ?? randomUUIDv7(); // Determine ID first
 
     // Initialize client structure with definite basic properties
     const client: Client = {
@@ -365,6 +374,7 @@ export async function NewClient (
     console.log(`[${client.id}] Creating new client for ${host}:${port}`);
 
     // Establish main connection
+    // Now, newConn will only be called with a valid port number
     let { conn, error: connError } = await newConn(host, port, client, simpleData);
     if (connError || !conn) {
         console.error(`[${client.id}] Failed to establish main connection.`);
