@@ -21,11 +21,10 @@ async function log(message: string) {
     } else {
         console.log("Iterator fetched successfully");
         for await (const item of iterator) {
-            console.log("item", item);
+            console.log("item", item.getVStr());
         }
         console.log("done with iterator");
     }
-    // console.log({ response2, setError2 });
     // if (client.conn) {
     //     client.conn.end();
     // }

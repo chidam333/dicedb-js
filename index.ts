@@ -103,7 +103,6 @@ async function newConn(
             port: port,
             socket: {
                 data(socket, data) {
-                    console.log("onData function name:", onData.name);
                     onData(client, data);
                 },
                 open(socket) {
