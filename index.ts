@@ -15,16 +15,15 @@ interface Client {
     conn: Bun.Socket<undefined> | null;
     watchConn: Bun.Socket<undefined> | null;
     host: string | undefined;
-    port: number | undefined
-    watchCh: typeof DiceResponse[];
-    watchIterator: AsyncIterable<{ value: typeof DiceResponse; done: boolean }> | null;
-    data?: typeof DiceResponse | null;
+    port: number | undefined;
+    watchCh: DiceResponse[];
+    watchIterator: AsyncIterable<{ value: DiceResponse; done: boolean }> | null;
+    data?: DiceResponse | null;
     Fire: (cmd: typeof Command) => Promise<{ response: DiceResponse | null; error: Error | null }>;
     FireString: (
         cmd: string,
         ...args: string[]
-    ) => Promise<{ response: DiceResponse | null; error: Error | null }>;
-    WatchChGetter: (client: Client) => Promise<{
+    ) => Promise<{ response: DiceResponse | null; error: Error | null }>;    WatchChGetter: (client: Client) => Promise<{
         iterator: AsyncIterable<{ value: DiceResponse; done: boolean }> | null;
         error: Error | null;
     }>;
@@ -51,11 +50,11 @@ function simpleWatch(client: Client, data: Buffer) {
     client.watchCh.push(response);
 }
 
-async function establishWatchConnection(client: Client, onData: (client: Client, data: Buffer) => void): Promise<{conn: Socket<undefined> | null; error: Error | null}>{
+async function establishWatchConnection(client: Client, onData: (client: Client, data: Buffer) => void): Promise<{ conn: Socket<undefined> | null; error: Error | null }> {
     return await newConn(client.host!, client.port!, client, onData);
 }
 
-async function createWatchIterator(client: Client): Promise<AsyncIterable<{value: typeof DiceResponse; done: boolean}>> {
+async function createWatchIterator(client: Client): Promise<AsyncIterable<{value: DiceResponse; done: boolean}>> {
     return {
         [Symbol.asyncIterator]() {
             return {
@@ -144,7 +143,7 @@ export async function NewClient (
     port: number,
     option?: Partial<Client>
 ): Promise<{ client: Client | null; error: null | Error }> {
-    const watchCh: DiceResponse[] = [];
+    const watchCh: Array<DiceResponse> = [];
     const client: Client = {
         id: randomUUIDv7(),
         conn: null,
@@ -224,4 +223,3 @@ export async function FireString(
 }
 
 export { Command, DiceResponse };
-``

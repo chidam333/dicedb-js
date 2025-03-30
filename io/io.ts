@@ -3,7 +3,7 @@ import type { Socket } from 'bun';
 import { Buffer } from 'node:buffer';
 
 export function read(data: Buffer): {response: DiceResponse | null; error: Error | null} {
-    let response: DiceResponse = new DiceResponse();
+    let response: typeof DiceResponse = new DiceResponse();
     try {
         response = DiceResponse.deserializeBinary(data);
     } catch (error) {
