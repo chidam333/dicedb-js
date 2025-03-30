@@ -1,5 +1,5 @@
 import { expect, test, mock, spyOn, beforeEach, afterEach } from "bun:test";
-import { NewClient, type Client } from "./index.js"; // Import Client type
+import { NewClient, Client } from "./index"; // Import Client type
 // Import Command and the Response *constructor* (renamed) from the generated JS file
 const { Command, Response: DiceResponseProto } = require("./wire/proto/cmd_pb");
 // Import the actual module for potential spying later if needed (not used in this diff)
@@ -22,11 +22,14 @@ afterEach(() => {
 
 test("invalid port", async () => {
     // This test might still briefly attempt a real connection, ideally mock Bun.connect
+    const consoleErrorSpy = spyOn(console, 'error').mockImplementation(() => {}); // Suppress console.error
     const { client, error } = await NewClient("localhost", -1);
     expect(error).toBeDefined();
     expect(client).toBeNull();
     // Add specific error type/message assertion if possible
     expect(error?.message).toMatch(/port|range/i); // Bun might throw range error
+
+    consoleErrorSpy.mockRestore(); // Restore console.error after the test
 });
 
 test("unable to connect", async () => {
