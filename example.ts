@@ -20,7 +20,7 @@ async function log(message: string) {
         console.log("Error fetching iterator", itrError);
     } else {
         console.log("Iterator fetched successfully");
-        for await (const item of iterator) {
+        for await (const item of iterator as any) {
             console.log("item", (item.value as DiceResponse).getVStr());
         }
         console.log("done with iterator");

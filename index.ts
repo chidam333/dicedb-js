@@ -15,10 +15,10 @@ interface Client {
     conn: Bun.Socket<undefined> | null;
     watchConn: Bun.Socket<undefined> | null;
     host: string | undefined;
-    port: number | undefined;
-    watchCh: DiceResponse[];
-    watchIterator: AsyncIterable<{ value: DiceResponse; done: boolean }> | null;
-    data?: DiceResponse | null;
+    port: number | undefined
+    watchCh: typeof DiceResponse[];
+    watchIterator: AsyncIterable<{ value: typeof DiceResponse; done: boolean }> | null;
+    data?: typeof DiceResponse | null;
     Fire: (cmd: typeof Command) => Promise<{ response: DiceResponse | null; error: Error | null }>;
     FireString: (
         cmd: string,
@@ -32,7 +32,7 @@ interface Client {
 
 const SECOND = 1000;
 
-function simpleData(client: Client, data: Buffer) {
+function simpleData(client: Client, data: Buffer){
     const { response, error } = read(data);
     if (error) {
         console.error("Error reading data:", error);
@@ -40,7 +40,7 @@ function simpleData(client: Client, data: Buffer) {
     }
     client.data = response;
 }
-
+``
 function simpleWatch(client: Client, data: Buffer) {
     const { response, error } = read(data);
     client.data = response;
@@ -51,24 +51,24 @@ function simpleWatch(client: Client, data: Buffer) {
     client.watchCh.push(response);
 }
 
-async function establishWatchConnection(client: Client, onData: (client: Client, data: Buffer) => void): Promise<{ conn: Socket<undefined> | null; error: Error | null }> {
+async function establishWatchConnection(client: Client, onData: (client: Client, data: Buffer) => void): Promise<{conn: Socket<undefined> | null; error: Error | null}>{
     return await newConn(client.host!, client.port!, client, onData);
 }
 
-async function createWatchIterator(client: Client): Promise<AsyncIterable<{ value: DiceResponse; done: boolean }>> {
+async function createWatchIterator(client: Client): Promise<AsyncIterable<{value: typeof DiceResponse; done: boolean}>> {
     return {
         [Symbol.asyncIterator]() {
             return {
                 async next() {
                     if (client.watchCh.length > 0) {
-                        const value = client.watchCh.shift()!;
+                        const value = client.watchCh.shift() as any;
                         return { value, done: false };
                     }
                     return new Promise((resolve) => {
                         const interval = setInterval(() => {
                             if (client.watchCh.length > 0) {
                                 clearInterval(interval);
-                                const value = client.watchCh.shift()!;
+                                const value = client.watchCh.shift() as any;
                                 resolve({ value, done: false });
                             }
                         }, 50);
@@ -79,7 +79,7 @@ async function createWatchIterator(client: Client): Promise<AsyncIterable<{ valu
     };
 }
 
-export async function WatchChGetter(client: Client): Promise<{
+export async function WatchChGetter(client: Client): Promise<{ 
     iterator: AsyncIterable<{ value: DiceResponse; done: boolean }> | null;
     error: Error | null;
 }> {
@@ -104,11 +104,11 @@ export async function WatchChGetter(client: Client): Promise<{
     return { iterator: watchIterator, error: null };
 }
 
-async function newConn(
+async function newConn( 
     host: string,
     port: number,
     client: Client,
-    onData: (client: Client, data: Buffer) => void
+    onData: (client: Client, data: Buffer) => void,
 ): Promise<{ conn: Socket<undefined> | null; error: Error | null }> {
     try {
         const conn = await Bun.connect({
@@ -117,15 +117,13 @@ async function newConn(
             socket: {
                 data(socket: Socket<undefined>, data: Buffer) {
                     onData(client, data);
-                },
-                open(socket: Socket<undefined>) {
-                    const response = socket.setKeepAlive(true, 5 * SECOND);
-                    console.log(
-                        `\x1b[32mSocket opened and keep-alive set. Response : ${response} ${onData.name}\x1b[0m`
-                    );
+                },open(socket: Socket<undefined>) {
+                    const response = socket.setKeepAlive(true, 5*SECOND)
+                    console.log(`\x1b[32mSocket opened and keep-alive set. Response : ${response} ${onData.name}\x1b[0m`);
+
                 },
                 error(error: Error) {
-                    console.error("Socket error:", error);
+                    console.error("Socket error:",error);
                 },
                 close() {
                     console.log("Socket closed.");
@@ -141,7 +139,7 @@ async function newConn(
     }
 }
 
-export async function NewClient(
+export async function NewClient (
     host: string,
     port: number,
     option?: Partial<Client>
@@ -153,7 +151,7 @@ export async function NewClient(
         host: undefined,
         port: undefined,
         watchConn: null,
-        watchCh,
+        watchCh: watchCh as any,
         watchIterator: null,
         WatchChGetter: () => WatchChGetter(client),
         Fire: (cmd: typeof Command) => Fire(client, cmd),
@@ -184,8 +182,8 @@ export async function NewClient(
     return { client, error: null };
 }
 
-export async function fire(
-    client: Client,
+export async function fire( 
+    client: Client, 
     cmd: any,
     conn: Bun.Socket<undefined>
 ): Promise<{ response: DiceResponse | null; error: Error | null }> {
@@ -207,14 +205,14 @@ export async function fire(
 }
 
 export async function Fire(
-    client: Client,
+    client: Client, 
     cmd: typeof Command
 ): Promise<{ response: DiceResponse | null; error: Error | null }> {
     return fire(client, cmd, client.conn!);
 }
 
 export async function FireString(
-    client: Client,
+    client: Client, 
     cmdStr: string
 ): Promise<{ response: DiceResponse | null; error: Error | null }> {
     cmdStr = cmdStr.trim();
@@ -226,3 +224,4 @@ export async function FireString(
 }
 
 export { Command, DiceResponse };
+``

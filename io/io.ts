@@ -2,7 +2,7 @@ const { Command, Response: DiceResponse } = require("../wire/proto/cmd_pb");
 import type { Socket } from 'bun';
 import { Buffer } from 'node:buffer';
 
-export function read(data: Buffer): { response: DiceResponse | null; error: Error | null } {
+export function read(data: Buffer): {response: DiceResponse | null; error: Error | null} {
     let response: DiceResponse = new DiceResponse();
     try {
         response = DiceResponse.deserializeBinary(data);
