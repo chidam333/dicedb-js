@@ -54,3 +54,4 @@ export function write(conn: Socket<undefined>, cmd: CommandType): Error | null {
 
 // Optional: Export the constructor if needed directly by other modules, though index.ts already does
 // export { DiceResponseProto };
+
