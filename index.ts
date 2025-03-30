@@ -111,7 +111,6 @@ async function createWatchIterator(client: Client): Promise<AsyncIterable<{value
                  // console.log(`[${client.id}] Iterator cleanup executed.`);
             };
 
-
             return {
                 async next(): Promise<{ value: DiceResponse | undefined; done: boolean }> {
                     if (stopped) {
@@ -199,7 +198,6 @@ async function createWatchIterator(client: Client): Promise<AsyncIterable<{value
         },
     };
 }
-
 
 // Use the type alias here
 export async function WatchChGetter(client: Client): Promise<{
@@ -324,9 +322,7 @@ async function newConn(
                 drain(socket: Socket<undefined>) {
                     // console.log(`[${client.id}] Socket drained [${connectionType}].`); // Usually too noisy
                 },
-            },
-            // @ts-expect-error TS2769: Bun.connect top-level 'timeout' seems incorrectly typed in @types/bun but is valid per docs for connection timeout.
-            timeout: 10 * SECOND, // Add a connection timeout
+            }
         });
         console.log(`[${client.id}] Connection attempt successful for [${connectionType}].`);
         return { conn, error: null };
@@ -378,7 +374,6 @@ export async function NewClient (
     client.conn = conn;
     console.log(`[${client.id}] Main connection established.`);
 
-
     // Perform initial handshake on the main connection
     // Use the original constructor value here
     const handshakeCmd = new Command();
@@ -406,7 +401,6 @@ export async function NewClient (
     console.log(`[${client.id}] Main handshake successful. Client ready.`);
     return { client, error: null };
 }
-
 
 // Base function to send a command and wait for a response on a specific connection
 // Use the type alias for the response promise
@@ -442,7 +436,6 @@ async function fire(
      // Note: If watch handshake response goes to simpleData, this reset is correct.
      // If watch handshake response goes to simpleWatch, we need a different mechanism.
      // Assuming server sends watch handshake response like other commands (to the connection it was sent on, triggering simpleData).
-
 
     // console.log(`[${client.id}] Firing command [${cmdName}] on ${connType} connection`);
     let writeError = write(conn, cmd); // write function handles serialization
@@ -496,7 +489,6 @@ async function fire(
         // Or potentially return an error here?
         // errorToReturn = new Error(`Cannot wait for response on unknown connection type for command [${cmdName}]`);
     }
-
 
     // console.log(`[${client.id}] Received response for command [${cmdName}] on ${connType}`);
 
