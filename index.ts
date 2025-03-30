@@ -325,6 +325,7 @@ async function newConn(
                     // console.log(`[${client.id}] Socket drained [${connectionType}].`); // Usually too noisy
                 },
             },
+            // @ts-expect-error TS2769: Bun.connect top-level 'timeout' seems incorrectly typed in @types/bun but is valid per docs for connection timeout.
             timeout: 10 * SECOND, // Add a connection timeout
         });
         console.log(`[${client.id}] Connection attempt successful for [${connectionType}].`);
