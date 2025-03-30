@@ -18,7 +18,7 @@ interface Client {
     watchCh: (typeof DiceResponse)[];
     watchIterator: AsyncIterable<{ value: typeof DiceResponse; done: boolean }> | null;
     data?: typeof DiceResponse | null;
-    Fire: (cmd: Command) => Promise<{ response: typeof DiceResponse | null; error: Error | null }>;
+    Fire: (cmd: typeof Command) => Promise<{ response: typeof DiceResponse | null; error: Error | null }>;
     FireString: (
         cmd: string,
         ...args: string[]
@@ -207,7 +207,7 @@ export async function fire(
 
 export async function Fire(
     client: Client,
-    cmd: Command
+    cmd: typeof Command
 ): Promise<{ response: typeof DiceResponse | null; error: Error | null }> {
     return fire(client, cmd, client.conn!);
 }
