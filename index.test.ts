@@ -1,5 +1,5 @@
 import { expect, test, mock, spyOn, beforeEach, afterEach } from "bun:test";
-import { NewClient, Client } from "./index"; // Import Client type
+import { NewClient, type Client } from "./index"; // Import Client type
 // Import Command and the Response *constructor* (renamed) from the generated JS file
 const { Command, Response: DiceResponseProto } = require("./wire/proto/cmd_pb");
 // Import the actual module for potential spying later if needed (not used in this diff)
