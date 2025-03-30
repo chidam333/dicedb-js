@@ -1,9 +1,9 @@
-const { Command, Response } = require("../wire/proto/cmd_pb");
+const { Command, Response:DiceResponse } = require("../wire/proto/cmd_pb");
 
-export function read(data: Buffer): { response: Response | null; error: Error | null } {
-    let response: Response = new Response();
+export function read(data: Buffer): { response: typeof DiceResponse | null; error: Error | null } {
+    let response: typeof DiceResponse = new DiceResponse();
     try {
-        response = Response.deserializeBinary(data);
+        response = DiceResponse.deserializeBinary(data);
     } catch (error) {
         return { response: null, error: error as Error };
     }

@@ -1,51 +1,116 @@
-import { randomUUIDv7 } from "bun";
+import { randomUUIDv7, type Socket } from "bun";
 import { read, write } from "./io/io.ts";
 
-const { Command, Response } = require("./wire/proto/cmd_pb");
+const { Command, Response: DiceResponse } = require("./wire/proto/cmd_pb");
 
 interface Client {
     id: string | undefined;
-    conn: Bun.Socket<undefined> | undefined;
-    watchConn: Bun.Socket<undefined> | undefined;
+    conn: Bun.Socket<undefined> | null;
+    watchConn: Bun.Socket<undefined> | null;
     host: string | undefined;
     port: number | undefined;
-    Fire: (cmd: typeof Command) => Promise<{ response: Response | null; error: Error | null }>;
-    FireString: (cmd: string, ...args: string[]) => Promise<{ response: Response | null; error: Error | null }>;
-    WatchCh: AsyncIterable<Response>;
-    data?: Response | null;
+    watchCh: (typeof DiceResponse)[];
+    watchIterator: AsyncIterable<{ value: typeof DiceResponse; done: boolean }> | null;
+    data?: typeof DiceResponse | null;
+    Fire: (cmd: typeof Command) => Promise<{ response: typeof DiceResponse | null; error: Error | null }>;
+    FireString: (
+        cmd: string,
+        ...args: string[]
+    ) => Promise<{ response: typeof DiceResponse | null; error: Error | null }>;
+    WatchChGetter: (client: Client) => Promise<{
+        iterator: AsyncIterable<{ value: typeof DiceResponse; done: boolean }> | null;
+        error: Error | null;
+    }>;
 }
 
 const SECOND = 1000;
 
-async function newConn(host: string, port: number): Promise<{ client: Client | null; error: Error | null }> {
-    const client: Client = {
-        id: randomUUIDv7(),
-        conn: undefined,
-        watchConn: undefined,
-        host: undefined,
-        port: undefined,
-        Fire: (cmd) => Fire(client, cmd),
-        FireString: (cmd) => FireString(client, cmd),
-        WatchCh: (async function* () {})(),
-        data: null,
+function simpleData(client: Client, data: Buffer) {
+    const { response, error } = read(data);
+    if (error) {
+        console.error("Error reading data:", error);
+        return;
+    }
+    client.data = response;
+}
+
+function simpleWatch(client: Client, data: Buffer) {
+    // TODO : only update client.data for handshake and watch
+    const { response, error } = read(data);
+    client.data = response;
+    if (error) {
+        console.error("Error reading data:", error);
+        return;
+    }
+    console.log(response.getVStr());
+    client.watchCh.push(response);
+}
+
+export async function WatchChGetter(client: Client): Promise<{
+    iterator: AsyncIterable<{ value: typeof DiceResponse; done: boolean }> | null;
+    error: Error | null;
+}> {
+    if (client.watchIterator != null) {
+        return { iterator: client.watchIterator, error: null };
+    }
+    const { conn, error } = await newConn(client.host!, client.port!, client, simpleWatch);
+    if (error || !conn) {
+        return { iterator: null, error };
+    }
+    client.watchConn = conn;
+    const cmd = new Command();
+    cmd.setCmd("HANDSHAKE");
+    cmd.setArgsList([client.id, "watch"]);
+    const { response, error: handShakeError } = await fire(client,cmd,conn);
+    if (handShakeError) {
+        console.error("Error during handshake:", handShakeError);
+        return { iterator: null, error: handShakeError };
+    }
+    const watchIterator: AsyncIterable<{ value: typeof DiceResponse; done: boolean }> = {
+        [Symbol.asyncIterator]() {
+            return {
+                async next() {
+                    if (client.watchCh.length > 0) {
+                        const value = client.watchCh.shift()!;
+                        return { value, done: false };
+                    }
+                    return new Promise((resolve) => {
+                        const interval = setInterval(() => {
+                            if (client.watchCh.length > 0) {
+                                clearInterval(interval);
+                                const value = client.watchCh.shift()!;
+                                resolve({ value, done: false });
+                            }
+                        }, 50);
+                    });
+                },
+            };
+        },
     };
+    client.watchIterator = watchIterator;
+    return { iterator: watchIterator, error: null };
+}
+
+async function newConn(
+    host: string,
+    port: number,
+    client: Client,
+    onData: (client: Client, data: Buffer) => void
+): Promise<{ conn: Socket<undefined> | null; error: Error | null }> {
     try {
         const conn = await Bun.connect({
             hostname: host,
             port: port,
             socket: {
                 data(socket, data) {
-                    console.log("Socket data received:", data.toString());
-                    const { response, error } = read(data);
-                    if (error) {
-                        console.error("Error reading data:", error);
-                        return;
-                    }
-                    client.data = response;
+                    console.log("onData function name:", onData.name);
+                    onData(client, data);
                 },
                 open(socket) {
                     const response = socket.setKeepAlive(true, 5 * SECOND);
-                    console.log(`\x1b[32mSocket opened and keep-alive set. Response : ${response}\x1b[0m`);
+                    console.log(
+                        `\x1b[32mSocket opened and keep-alive set. Response : ${response} ${onData.name}\x1b[0m`
+                    );
                 },
                 error(error) {
                     console.error("Socket error:", error);
@@ -58,19 +123,33 @@ async function newConn(host: string, port: number): Promise<{ client: Client | n
                 },
             },
         });
-        client.conn = conn;
-        client.watchConn = conn;
-        return { client, error: null };
+        return { conn, error: null };
     } catch (error) {
-        return { client: null, error: error as Error };
+        return { conn: null, error: error as Error };
     }
 }
+
 export async function NewClient(
     host: string,
     port: number,
     option?: Partial<Client>
 ): Promise<{ client: Client | null; error: null | Error }> {
-    let { client, error } = await newConn(host, port);
+    const watchCh: (typeof DiceResponse)[] = [];
+    const client: Client = {
+        id: randomUUIDv7(),
+        conn: null,
+        host: undefined,
+        port: undefined,
+        watchConn: null,
+        watchCh,
+        watchIterator: null,
+        WatchChGetter: () => WatchChGetter(client),
+        Fire: (cmd) => Fire(client, cmd),
+        FireString: (cmd) => FireString(client, cmd),
+        data: null,
+    };
+    let { conn, error } = await newConn(host, port, client, simpleData);
+    client.conn = conn;
     if (error || !client || client.conn == null) {
         return { client: null, error };
     }
@@ -82,7 +161,6 @@ export async function NewClient(
     client.watchConn = option?.watchConn ?? client.watchConn;
     client.Fire = option?.Fire ?? client.Fire;
     client.FireString = option?.FireString ?? client.FireString;
-    client.WatchCh = option?.WatchCh ?? (async function* () {})();
     const cmd = new Command();
     cmd.setCmd("HANDSHAKE");
     cmd.setArgsList([client.id, "watch"]);
@@ -92,27 +170,17 @@ export async function NewClient(
         return { client: null, error: handShakeError };
     }
     return { client, error: null };
-    //     let bytes = cmd.serializeBinary();
-    //     console.log("Serialized command:", bytes);
-    //     const response = conn.write(bytes);
-    //     console.log({ response });
-    //     cmd.setCmd("PING");
-    //     cmd.setArgsList(["Lol"]);
-    //     bytes = cmd.serializeBinary();
-    //     console.log("Serialized command:", bytes);
-    //     const response2 = conn.write(bytes);
-    //     console.log({ response2 });
-    //     return { conn, error: null };
 }
 
-export async function Fire(
+export async function fire(
     client: Client,
-    cmd: typeof Command
-): Promise<{ response: Response | null; error: Error | null }> {
-    if (!client.conn) {
+    cmd: typeof Command,
+    conn: Bun.Socket<undefined>
+): Promise<{ response: typeof DiceResponse | null; error: Error | null }> {
+    if (!conn) {
         return { response: null, error: new Error("Client not connected") };
     }
-    let error = write(client.conn, cmd);
+    let error = write(conn, cmd);
     if (error) return { response: null, error };
     const startTime = Date.now();
     while (!client.data) {
@@ -126,10 +194,17 @@ export async function Fire(
     return responseAndError;
 }
 
+export async function Fire(
+    client: Client,
+    cmd: typeof Command
+): Promise<{ response: typeof DiceResponse | null; error: Error | null }> {
+    return fire(client, cmd, client.conn!);
+}
+
 export async function FireString(
     client: Client,
     cmdStr: string
-): Promise<{ response: Response | null; error: Error | null }> {
+): Promise<{ response: typeof DiceResponse | null; error: Error | null }> {
     cmdStr = cmdStr.trim();
     const tokens = cmdStr.split(" ");
     const command = new Command();
