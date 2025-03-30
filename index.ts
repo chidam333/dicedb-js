@@ -1,7 +1,7 @@
 import { randomUUIDv7, type Socket } from "bun";
 import { read, write } from "./io/io.ts";
 import { Buffer } from 'node:buffer';
-import type { InstanceType } from "bun"; // Or rely on global InstanceType
+// Removed: import type { InstanceType } from "bun"; - InstanceType is global
 
 // Import the constructor value, renaming Response to avoid conflict
 const { Command, Response: DiceResponseProto } = require("./wire/proto/cmd_pb");
@@ -12,7 +12,6 @@ export type DiceResponse = InstanceType<typeof DiceResponseProto>;
 // This represents the type of an *instance* of a Command
 export type CommandType = InstanceType<typeof Command>;
 // --- End Type Aliases ---
-
 
 enum CommandName {
     HANDSHAKE = "HANDSHAKE",
@@ -100,15 +99,29 @@ async function createWatchIterator(client: Client): Promise<AsyncIterable<{value
     return {
         [Symbol.asyncIterator]() {
             let stopped = false; // Flag to stop iteration
+            let intervalId: Timer | null = null; // Keep track of interval
+
+            // Define cleanup logic separately
+            const cleanupIterator = () => {
+                if (intervalId) {
+                    clearInterval(intervalId);
+                    intervalId = null;
+                }
+                stopped = true;
+                 // console.log(`[${client.id}] Iterator cleanup executed.`);
+            };
+
+
             return {
                 async next(): Promise<{ value: DiceResponse | undefined; done: boolean }> {
                     if (stopped) {
                         return { value: undefined, done: true };
                     }
                     // Check connection health before waiting
+                    // Use optional chaining for safety, though watchConn should exist if iterator is active
                     if (!client.watchConn || client.watchConn.readyState !== 'open') {
                         console.warn(`[${client.id}] Watch connection closed or invalid while iterating.`);
-                        stopped = true;
+                        cleanupIterator();
                         return { value: undefined, done: true };
                     }
 
@@ -124,55 +137,49 @@ async function createWatchIterator(client: Client): Promise<AsyncIterable<{value
                         const maxWait = 30 * SECOND; // Longer timeout for idle watching
                         let waited = 0;
 
-                        const intervalId = setInterval(() => {
+                        // Clear previous interval if any (safety measure)
+                        if (intervalId) clearInterval(intervalId);
+
+                        intervalId = setInterval(() => {
                             if (stopped) { // Check if stopped during wait
-                                clearInterval(intervalId);
+                                cleanupIterator(); // Ensure cleanup happens
                                 resolve({ value: undefined, done: true });
                                 return;
                             }
                             waited += checkInterval;
+
+                            // Check connection status first
+                            // Use optional chaining here too
+                             if (!client.watchConn || client.watchConn.readyState !== 'open') {
+                                console.warn(`[${client.id}] Watch connection closed or invalid during wait.`);
+                                cleanupIterator();
+                                resolve({ value: undefined, done: true });
+                                return;
+                             }
+
                             // Check for data
                             if (client.watchCh.length > 0) {
-                                clearInterval(intervalId);
+                                cleanupIterator(); // Clear interval once data is found
                                 const value = client.watchCh.shift()!;
                                 resolve({ value, done: false });
                             }
-                            // Check connection status or timeout
-                            else if (!client.watchConn || client.watchConn.readyState !== 'open' || waited >= maxWait) {
-                                clearInterval(intervalId);
-                                if (!client.watchConn || client.watchConn.readyState !== 'open') {
-                                    console.warn(`[${client.id}] Watch connection closed or invalid during wait.`);
-                                } else {
-                                    // console.log(`[${client.id}] Watch iterator wait timeout.`); // Can be noisy
-                                    // Don't necessarily mark as done on timeout, just check again next iteration
-                                    // Resolve with nothing for now, forcing next() to re-evaluate
-                                     resolve({ value: undefined, done: false }); // Indicate not done, allows next poll
-                                     // Alternative: Indicate done on timeout?
-                                     // stopped = true; resolve({ value: undefined, done: true });
-                                }
-                                // If connection closed, mark stopped and done
-                                stopped = true; resolve({ value: undefined, done: true });
+                            // Check timeout (only if no data and connection still open)
+                            else if (waited >= maxWait) {
+                                // console.log(`[${client.id}] Watch iterator wait timeout.`); // Can be noisy
+                                cleanupIterator(); // Clear interval on timeout
+                                // Don't necessarily mark as done on timeout, just check again next iteration
+                                // Resolve with nothing for now, forcing next() to re-evaluate
+                                resolve({ value: undefined, done: false }); // Indicate not done, allows next poll
+                                // Alternative: Indicate done on timeout?
+                                // resolve({ value: undefined, done: true });
                             }
                         }, checkInterval);
-
-                        // Clean up interval if socket closes unexpectedly
-                        const cleanup = () => {
-                            clearInterval(intervalId);
-                            client.watchConn?.removeListener('close', cleanup);
-                            client.watchConn?.removeListener('error', cleanup);
-                            if (!stopped) { // Prevent double resolve if already handled
-                                stopped = true;
-                                resolve({ value: undefined, done: true });
-                            }
-                        }
-                        client.watchConn?.once('close', cleanup);
-                        client.watchConn?.once('error', cleanup);
                     });
                 },
                 // Called when the loop finishes (e.g., break, return) or on uncaught error
                 async return(): Promise<{ value: undefined; done: true }> {
                     console.log(`[${client.id}] Watch iterator closing (return called).`);
-                    stopped = true;
+                    cleanupIterator();
                     // Optional: Clean up resources, like telling server to stop sending
                     // client.watchConn?.end(); // Maybe? Depends on server protocol
                     return { value: undefined, done: true };
@@ -180,9 +187,10 @@ async function createWatchIterator(client: Client): Promise<AsyncIterable<{value
                  // Called if an error occurs during iteration
                 async throw(error: any): Promise<{ value: undefined; done: true }> {
                     console.error(`[${client.id}] Watch iterator error (throw called):`, error);
-                    stopped = true;
+                    cleanupIterator();
                     // Optional: Clean up resources
-                     client.watchConn?.end(); // Close connection on error
+                    // Close connection on error? Might already be closed by socket error handler.
+                     // client.watchConn?.end();
                     // Re-throw error or handle it
                     // throw error; // Propagate error if desired
                     return { value: undefined, done: true }; // Mark as done
@@ -191,6 +199,7 @@ async function createWatchIterator(client: Client): Promise<AsyncIterable<{value
         },
     };
 }
+
 
 // Use the type alias here
 export async function WatchChGetter(client: Client): Promise<{
@@ -274,8 +283,8 @@ async function newConn(
                     const response = socket.setKeepAlive(true, 5 * SECOND);
                     console.log(`\x1b[32m[${client.id}] Socket opened [${connectionType}], keep-alive set: ${response}\x1b[0m`);
                 },
-                // --- Fix the socket error handler signature ---
-                error(socket: Socket<undefined>, error: Error) { // Added socket parameter
+                // --- Corrected socket error handler signature ---
+                error(socket: Socket<undefined>, error: Error) { // Correct signature
                     console.error(`\x1b[31m[${client.id}] Socket error [${connectionType}]:\x1b[0m`, error);
                     // Clean up client state associated with this connection
                     if (socket === client.watchConn) {
@@ -290,8 +299,13 @@ async function newConn(
                      // Attempt to close the socket if it's not already closing/closed
                     try { if (socket.readyState === 'open') socket.end(); } catch {/* ignore */}
                 },
-                close(socket: Socket<undefined>, hadError: boolean) {
+                // --- Corrected socket close handler signature ---
+                close(socket: Socket<undefined>, error?: Error) { // Correct signature (error is optional Error)
+                    const hadError = !!error; // Determine if an error caused the closure
                     console.log(`\x1b[33m[${client.id}] Socket closed [${connectionType}], hadError: ${hadError}\x1b[0m.`);
+                    if(error) {
+                        console.error(`[${client.id}] Socket closed due to error:`, error);
+                    }
                      // Mark connection as closed in client state
                     if (socket === client.watchConn) {
                         if (client.watchConn) { // Avoid redundant cleanup if error handler ran
@@ -415,7 +429,19 @@ async function fire(
     // *** CRITICAL ASSUMPTION: ALL command responses are processed ONLY by simpleData ***
     // If watch handshake response comes via simpleWatch, this logic will fail for that case.
     // Let's assume for now simpleData handles all direct command responses.
-    client.data = null;
+    // --- Special Handling for Watch Handshake ---
+    // If this `fire` call is for the watch handshake, we might need a different mechanism
+    // to wait for its *specific* response, possibly via a temporary listener or flag,
+    // *if* its response comes via `simpleWatch`.
+    // HOWEVER, the current logic assumes `simpleData` handles *all* responses waited for by `fire`.
+    // Let's stick to that assumption unless proven otherwise by server behavior.
+    if (connType === 'main' || connType === 'watch' /* Assume watch handshake response uses simpleData for now */ ) {
+        client.data = null;
+    }
+     // Note: If watch handshake response goes to simpleData, this reset is correct.
+     // If watch handshake response goes to simpleWatch, we need a different mechanism.
+     // Assuming server sends watch handshake response like other commands (to the connection it was sent on, triggering simpleData).
+
 
     // console.log(`[${client.id}] Firing command [${cmdName}] on ${connType} connection`);
     let writeError = write(conn, cmd); // write function handles serialization
@@ -425,45 +451,66 @@ async function fire(
     }
 
     // Wait for the response to appear in client.data (populated by simpleData)
-    const startTime = Date.now();
-    try {
-        while (client.data === null) { // Check strictly for null, as undefined might be initial state
-            if (Date.now() - startTime > DEFAULT_TIMEOUT) {
-                const error = new Error(`Timeout waiting for response to command [${cmdName}] on ${connType}`);
-                console.error(`[${client.id}] ${error.message}`);
-                return { response: null, error };
+    // --- Refined Waiting Logic ---
+    // We only wait on `client.data` if we fired on the main connection,
+    // because only `simpleData` updates `client.data`.
+    // If we fired on the watch connection (e.g., handshake), we need to verify
+    // how the response is received. Assuming it *still* comes via simpleData for now.
+    // A more robust solution might involve correlation IDs if responses aren't guaranteed
+    // to be handled by the main data handler.
+    let responseToReturn: DiceResponse | null = null;
+    let errorToReturn: Error | null = null;
+
+    if (connType === 'main' || connType === 'watch' /* Assume watch handshake response uses simpleData for now */ ) {
+        const startTime = Date.now();
+        try {
+            while (client.data === null) { // Check strictly for null
+                if (Date.now() - startTime > DEFAULT_TIMEOUT) {
+                    errorToReturn = new Error(`Timeout waiting for response to command [${cmdName}] on ${connType}`);
+                    console.error(`[${client.id}] ${errorToReturn.message}`);
+                    break; // Exit loop on timeout
+                }
+                // Check connection status inside loop
+                if (conn.readyState !== 'open') {
+                    errorToReturn = new Error(`Connection [${connType}] closed while waiting for response to command [${cmdName}]`);
+                    console.error(`[${client.id}] ${errorToReturn.message}`);
+                    break; // Exit loop on connection close
+                }
+                await Bun.sleep(20); // Short sleep while polling
             }
-            // Check connection status inside loop
-            if (conn.readyState !== 'open') {
-                 const error = new Error(`Connection [${connType}] closed while waiting for response to command [${cmdName}]`);
-                 console.error(`[${client.id}] ${error.message}`);
-                 return { response: null, error };
+            // If loop finished without error, capture data
+            if (!errorToReturn) {
+                responseToReturn = client.data;
+                 // Immediately clear data field *after* capturing, ready for the next command
+                client.data = null;
             }
-            await Bun.sleep(20); // Short sleep while polling
+        } catch (e) {
+            errorToReturn = e instanceof Error ? e : new Error(String(e));
+            console.error(`[${client.id}] Error during wait loop for command [${cmdName}] on ${connType}:`, errorToReturn);
+            client.data = null; // Ensure data is cleared even on error during wait
         }
-    } catch (e) {
-         const error = e instanceof Error ? e : new Error(String(e));
-         console.error(`[${client.id}] Error during wait loop for command [${cmdName}] on ${connType}:`, error);
-         return { response: null, error };
+    } else {
+        // If fired on an 'unknown' connection type, we cannot reliably wait for a response via client.data
+        console.warn(`[${client.id}] Cannot reliably wait for response on unknown connection type for command [${cmdName}]. Returning immediately.`);
+        // Or potentially return an error here?
+        // errorToReturn = new Error(`Cannot wait for response on unknown connection type for command [${cmdName}]`);
     }
 
-    // Capture the response
-    const response = client.data;
-    // Immediately clear data field *after* capturing, ready for the next command
-    client.data = null;
 
     // console.log(`[${client.id}] Received response for command [${cmdName}] on ${connType}`);
 
     // Check if the response *payload* indicates an error from the server
-    if (response && typeof response.getErr === 'function' && response.getErr()) {
-        const serverError = new Error(response.getErr());
+    // This check happens regardless of whether we timed out or had a connection error during wait
+    if (responseToReturn && typeof responseToReturn.getErr === 'function' && responseToReturn.getErr()) {
+        const serverError = new Error(responseToReturn.getErr());
+        // If we already had an error (like timeout), prioritize that? Or combine?
+        // For now, return the server error if present, potentially overwriting timeout error.
         // console.warn(`[${client.id}] Server returned error in response for command [${cmdName}]: ${serverError.message}`);
-        // Return both the response (containing the error string) and the Error object
-        return { response: response, error: serverError };
+        return { response: responseToReturn, error: serverError };
     }
 
-    // Success case (no write error, no timeout, no connection error, no server error in payload)
-    return { response: response, error: null };
+    // Return captured response/error (which might be null/timeout error/connection error)
+    return { response: responseToReturn, error: errorToReturn };
 }
 
 // Public Fire method - always uses the main connection
@@ -500,4 +547,4 @@ export async function FireString(
 }
 
 // Export the original constructors and the type aliases
-export { Command, DiceResponseProto, type DiceResponse, type CommandType };
+export { Command, DiceResponseProto }; // Removed re-exported types
