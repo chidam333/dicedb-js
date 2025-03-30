@@ -1,4 +1,4 @@
-const { Command, Response:DiceResponse } = require("../wire/proto/cmd_pb");
+const { Command, Response: DiceResponse } = require("../wire/proto/cmd_pb");
 
 export function read(data: Buffer): { response: typeof DiceResponse | null; error: Error | null } {
     let response: typeof DiceResponse = new DiceResponse();
@@ -10,11 +10,13 @@ export function read(data: Buffer): { response: typeof DiceResponse | null; erro
     return { response, error: null };
 }
 
-export function write(conn: Bun.Socket<undefined>, cmd: typeof Command): Error | null {
+export function write(conn: Bun.Socket<undefined>, cmd: any): Error | null {
+    // Explicit type for cmd
     let resp: Uint8Array;
     try {
         resp = cmd.serializeBinary();
     } catch (error) {
+        console.error("Failed to serialize command:", error);
         return error as Error;
     }
 
@@ -22,6 +24,7 @@ export function write(conn: Bun.Socket<undefined>, cmd: typeof Command): Error |
         conn.write(resp);
         return null;
     } catch (error) {
+        console.error("Failed to write to socket:", error);
         return error as Error;
     }
 }
