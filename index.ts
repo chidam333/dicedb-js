@@ -3,6 +3,12 @@ import { read, write } from "./io/io.ts";
 
 const { Command, Response: DiceResponse } = require("./wire/proto/cmd_pb");
 
+enum CommandName {
+    HANDSHAKE = "HANDSHAKE",
+    SET = "SET",
+    GET = "GET",
+}
+
 interface Client {
     id: string | undefined;
     conn: Bun.Socket<undefined> | null;
@@ -12,7 +18,7 @@ interface Client {
     watchCh: (typeof DiceResponse)[];
     watchIterator: AsyncIterable<{ value: typeof DiceResponse; done: boolean }> | null;
     data?: typeof DiceResponse | null;
-    Fire: (cmd: typeof Command) => Promise<{ response: typeof DiceResponse | null; error: Error | null }>;
+    Fire: (cmd: Command) => Promise<{ response: typeof DiceResponse | null; error: Error | null }>;
     FireString: (
         cmd: string,
         ...args: string[]
@@ -35,38 +41,21 @@ function simpleData(client: Client, data: Buffer) {
 }
 
 function simpleWatch(client: Client, data: Buffer) {
-    // TODO : only update client.data for handshake and watch
     const { response, error } = read(data);
     client.data = response;
     if (error) {
         console.error("Error reading data:", error);
         return;
     }
-    console.log(response.getVStr());
     client.watchCh.push(response);
 }
 
-export async function WatchChGetter(client: Client): Promise<{
-    iterator: AsyncIterable<{ value: typeof DiceResponse; done: boolean }> | null;
-    error: Error | null;
-}> {
-    if (client.watchIterator != null) {
-        return { iterator: client.watchIterator, error: null };
-    }
-    const { conn, error } = await newConn(client.host!, client.port!, client, simpleWatch);
-    if (error || !conn) {
-        return { iterator: null, error };
-    }
-    client.watchConn = conn;
-    const cmd = new Command();
-    cmd.setCmd("HANDSHAKE");
-    cmd.setArgsList([client.id, "watch"]);
-    const { response, error: handShakeError } = await fire(client,cmd,conn);
-    if (handShakeError) {
-        console.error("Error during handshake:", handShakeError);
-        return { iterator: null, error: handShakeError };
-    }
-    const watchIterator: AsyncIterable<{ value: typeof DiceResponse; done: boolean }> = {
+async function establishWatchConnection(client: Client, onData: (client: Client, data: Buffer) => void): Promise<{ conn: Socket<undefined> | null; error: Error | null }> {
+    return await newConn(client.host!, client.port!, client, onData);
+}
+
+async function createWatchIterator(client: Client): Promise<AsyncIterable<{ value: typeof DiceResponse; done: boolean }>> {
+    return {
         [Symbol.asyncIterator]() {
             return {
                 async next() {
@@ -87,6 +76,29 @@ export async function WatchChGetter(client: Client): Promise<{
             };
         },
     };
+}
+
+export async function WatchChGetter(client: Client): Promise<{
+    iterator: AsyncIterable<{ value: typeof DiceResponse; done: boolean }> | null;
+    error: Error | null;
+}> {
+    if (client.watchIterator != null) {
+        return { iterator: client.watchIterator, error: null };
+    }
+    const { conn, error } = await establishWatchConnection(client, simpleWatch);
+    if (error || !conn) {
+        return { iterator: null, error };
+    }
+    client.watchConn = conn;
+    const cmd = new Command();
+    cmd.setCmd(CommandName.HANDSHAKE);
+    cmd.setArgsList([client.id, "watch"]);
+    const { response, error: handShakeError } = await fire(client, cmd, conn);
+    if (handShakeError) {
+        console.error("Error during handshake:", handShakeError);
+        return { iterator: null, error: handShakeError };
+    }
+    const watchIterator = await createWatchIterator(client);
     client.watchIterator = watchIterator;
     return { iterator: watchIterator, error: null };
 }
@@ -161,7 +173,7 @@ export async function NewClient(
     client.Fire = option?.Fire ?? client.Fire;
     client.FireString = option?.FireString ?? client.FireString;
     const cmd = new Command();
-    cmd.setCmd("HANDSHAKE");
+    cmd.setCmd(CommandName.HANDSHAKE);
     cmd.setArgsList([client.id, "watch"]);
     const { response, error: handShakeError } = await client.Fire(cmd);
     if (handShakeError) {
@@ -173,7 +185,7 @@ export async function NewClient(
 
 export async function fire(
     client: Client,
-    cmd: typeof Command,
+    cmd: any,
     conn: Bun.Socket<undefined>
 ): Promise<{ response: typeof DiceResponse | null; error: Error | null }> {
     if (!conn) {
@@ -184,7 +196,7 @@ export async function fire(
     const startTime = Date.now();
     while (!client.data) {
         if (Date.now() - startTime > 5000) {
-            return { response: null, error: new Error("Timeout didn't get response") };
+            return { response: null, error: new Error(`Timeout waiting for response to command: ${cmd.getCmd()}`) };
         }
         await new Promise((resolve) => setTimeout(resolve, 100));
     }
@@ -195,7 +207,7 @@ export async function fire(
 
 export async function Fire(
     client: Client,
-    cmd: typeof Command
+    cmd: Command
 ): Promise<{ response: typeof DiceResponse | null; error: Error | null }> {
     return fire(client, cmd, client.conn!);
 }
