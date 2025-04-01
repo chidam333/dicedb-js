@@ -1,4 +1,4 @@
-<img src="./dicedb.png" alt="dicedb" height="100px"/>
+<img src="https://raw.githubusercontent.com/chidam333/dicedb-js/refs/heads/main/dicedb.png" alt="dicedb" height="100px"/>
 
 
 # dicedb-client
