@@ -10,7 +10,7 @@
 Install dependencies using `bun`:
 
 ```bash
-bun install
+bun install dicedb-sdk
 ```
 
 ## Running the Example
