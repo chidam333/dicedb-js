@@ -1,7 +1,5 @@
 <img src="./dicedb.png" alt="dicedb" height="100px"/>
 
-<br/>
-<br/>
 
 # dicedb-client
 
