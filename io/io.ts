@@ -1,20 +1,22 @@
-const { Command, Response: DiceResponse } = require("../wire/proto/cmd_pb");
+import type { Command, Response } from "../wire/proto/cmd_pb";
+import { CommandSchema, ResponseSchema } from "../wire/proto/cmd_pb";
+import { create, toBinary, fromBinary } from "@bufbuild/protobuf";
 
-export function read(data: Buffer): { response: typeof DiceResponse | null; error: Error | null } {
-    let response: typeof DiceResponse = new DiceResponse();
+export function read(data: Buffer): { response: Response | null; error: Error | null } {
+    let response: Response | null = null;
     try {
-        response = DiceResponse.deserializeBinary(data);
+        response = fromBinary(ResponseSchema, new Uint8Array(data.buffer, data.byteOffset, data.byteLength));
     } catch (error) {
         return { response: null, error: error as Error };
     }
     return { response, error: null };
 }
 
-export function write(conn: Bun.Socket<undefined>, cmd: any): Error | null {
+export function write(conn: Bun.Socket<undefined>, cmd: Command): Error | null {
     // Explicit type for cmd
     let resp: Uint8Array;
     try {
-        resp = cmd.serializeBinary();
+        resp = toBinary(CommandSchema, cmd);
     } catch (error) {
         console.error("Failed to serialize command:", error);
         return error as Error;

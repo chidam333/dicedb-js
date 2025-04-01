@@ -3,6 +3,8 @@
   "module": "index.ts",
   "type": "module",
   "devDependencies": {
+    "@bufbuild/buf": "^1.51.0",
+    "@bufbuild/protoc-gen-es": "^2.2.5",
     "@types/bun": "latest"
   },
   "scripts": {
@@ -16,6 +18,7 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "@bufbuild/protobuf": "^2.2.5",
     "google-protobuf": "^3.21.4",
     "protobufjs": "6.6.4"
   },
