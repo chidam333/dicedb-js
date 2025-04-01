@@ -1,7 +1,8 @@
 {
   "name": "dicedb-sdk",
   "description": "A simple, fast, and efficient dice-db client",
-  "version": "1.0.3",
+  "version": "1.0.6",
+  "main": "package/index.js",
   "module": "index.ts",
   "type": "module",
   "devDependencies": {
@@ -11,6 +12,7 @@
   },
   "scripts": {
     "build": "bun build index.ts --outdir=dist --minify",
+    "package": "bun build index.ts --target=node --outdir=package --minify",
     "dev": "bun index.ts",
     "test": "bun test",
     "lint": "bun run eslint .",
