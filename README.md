@@ -1,32 +1,19 @@
+<br/>
 <img src="https://raw.githubusercontent.com/chidam333/dicedb-js/refs/heads/main/dicedb.png" alt="dicedb" height="100px"/>
 
 
 # dicedb-client
 
-### A performant type safe client library for interacting with a DiceDB server.
+<h3>A <span style="color: cyan;">blazingly fast</span> type safe client library for interacting with a DiceDB server.</h3>
+
+<br/>
 
 ## Installation
 
 Install dependencies using `bun`:
 
 ```bash
-bun install dicedb-sdk
-```
-
-## Running the Example
-
-To run the example:
-
-```bash
-bun run example.ts
-```
-
-## Testing
-
-Run the tests using:
-
-```bash
-bun test
+bun add dicedb-sdk
 ```
 
 ## API Usage
@@ -36,7 +23,7 @@ bun test
 Use the `NewClient` function to create a new client instance.
 
 ```ts
-import { NewClient } from "./index.js";
+import { NewClient } from "dicedb-sdk";
 
 const { client, error } = await NewClient("localhost", 7379);
 if (error) {
@@ -50,10 +37,12 @@ if (error) {
 
 You can execute commands using the Fire or FireString methods.
 
-#### Using `Fire` with a Command object:
 
 ```ts
-import { create, CommandSchema } from "./index.js";
+
+// Using `Fire` with a Command object:
+
+import { create, CommandSchema } from "dicedb-sdk";
 
 const cmd = create(CommandSchema, {
     cmd: "SET",
@@ -66,17 +55,16 @@ if (error) {
 } else {
     console.log("Response:", response?.value);
 }
-```
 
-#### Using `FireString` with a command string:
+// Using `FireString` with a command string:
 
-```ts
 const { response, error } = await client.FireString("GET key");
 if (error) {
     console.error("Error executing command:", error);
 } else {
     console.log("Response:", response?.value);
 }
+
 ```
 
 ### 3. Watch for Changes
