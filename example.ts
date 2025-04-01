@@ -1,5 +1,7 @@
 import { CommandSchema, ResponseSchema, NewClient, create } from "./index.ts";
-import type { Command, Response } from "./index.ts";
+
+// import type { Command, Response } from "./index.ts"; (import not required as types are assigned implicitly)
+
 async function log(message: string) {
     const { client, error } = await NewClient("localhost", 7379);
     if (!client || error) {
