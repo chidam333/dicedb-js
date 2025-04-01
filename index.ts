@@ -5,26 +5,30 @@ import type { Command, Response } from "./gen/proto/cmd_pb.ts";
 import { create } from "@bufbuild/protobuf";
 import { CommandSchema, ResponseSchema } from "./gen/proto/cmd_pb.ts";
 
-enum CommandName {
-    HANDSHAKE = "HANDSHAKE",
-    SET = "SET",
-    GET = "GET",
-}
+export const CommandName = {
+    HANDSHAKE: "HANDSHAKE",
+    SET: "SET",
+    GET: "GET",
+} as const;
+
+export type CommandName = typeof CommandName[keyof typeof CommandName];
+
+type Maybe<T> = T | null;
 
 interface Client {
     id: string;
-    conn: Socket | null;
-    watchConn: Socket | null;
+    conn: Maybe<Socket>;
+    watchConn: Maybe<Socket>;
     host: string;
     port: number;
     watchCh: Response[];
-    watchIterator: AsyncIterable<Response> | null;
-    data?: Response | null;
-    Fire: (cmd: Command) => Promise<{ response: Response | null; error: Error | null }>;
-    FireString: (cmd: string, ...args: string[]) => Promise<{ response: Response | null; error: Error | null }>;
+    watchIterator: Maybe<AsyncIterable<Response>>;
+    data?: Maybe<Response>;
+    Fire: (cmd: Command) => Promise<{ response: Maybe<Response>; error: Maybe<Error> }>;
+    FireString: (cmd: string, ...args: string[]) => Promise<{ response: Maybe<Response>; error: Maybe<Error> }>;
     WatchChGetter: (client: Client) => Promise<{
-        iterator: AsyncIterable<Response> | null;
-        error: Error | null;
+        iterator: Maybe<AsyncIterable<Response>>;
+        error: Maybe<Error>;
     }>;
 }
 

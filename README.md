@@ -2,18 +2,20 @@
 <img src="https://raw.githubusercontent.com/chidam333/dicedb-js/refs/heads/main/dicedb.png" alt="dicedb" height="100px"/>
 
 
-# dicedb-client
+# dicedb-sdk
 
-<h3>A <span style="color: cyan;">blazingly fast</span> type safe client library for interacting with a DiceDB server.</h3>
+<h3>A <span style="color: cyan;">blazingly fast</span> type safe client to interact with DiceDB</h3>
 
 <br/>
 
 ## Installation
 
-Install dependencies using `bun`:
-
 ```bash
 bun add dicedb-sdk
+```
+
+```bash
+npm i dicedb-sdk
 ```
 
 ## API Usage
