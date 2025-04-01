@@ -1,6 +1,11 @@
+<img src="./dicedb.png" alt="dicedb" height="100px"/>
+
+<br/>
+<br/>
+
 # dicedb-client
 
-A performant type safe client library for interacting with a DiceDB server.
+### A performant type safe client library for interacting with a DiceDB server.
 
 ## Installation
 
@@ -52,9 +57,9 @@ You can execute commands using the Fire or FireString methods.
 ```ts
 import { create, CommandSchema } from "./index.js";
 
-const cmd = create(CommandSchema, { 
-    cmd: "SET", 
-    args: ["key", "value"] 
+const cmd = create(CommandSchema, {
+    cmd: "SET",
+    args: ["key", "value"],
 });
 
 const { response, error } = await client.Fire(cmd);

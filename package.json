@@ -1,5 +1,7 @@
 {
-  "name": "dicedb-client",
+  "name": "dicedb-sdk",
+  "description": "A simple, fast, and efficient dice-db client",
+  "version": "1.0.0",
   "module": "index.ts",
   "type": "module",
   "devDependencies": {
