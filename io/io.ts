@@ -1,5 +1,5 @@
-import type { Command, Response } from "../wire/proto/cmd_pb";
-import { CommandSchema, ResponseSchema } from "../wire/proto/cmd_pb";
+import type { Command, Response } from "../gen/proto/cmd_pb";
+import { CommandSchema, ResponseSchema } from "../gen/proto/cmd_pb";
 import { create, toBinary, fromBinary } from "@bufbuild/protobuf";
 
 export function read(data: Buffer): { response: Response | null; error: Error | null } {

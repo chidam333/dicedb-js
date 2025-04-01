@@ -1,5 +1,7 @@
 import { expect, test, mock } from "bun:test";
-import { NewClient, Command } from "./index.js";
+import { NewClient, CommandSchema, ResponseSchema } from "./index.js";
+import type { Command, Response } from "./gen/proto/cmd_pb.js";
+import { create } from "@bufbuild/protobuf";
 
 test("invalid port", async () => {
     const { client, error } = await NewClient("localhost", -1);
@@ -22,15 +24,39 @@ test("set, get, Fire, FireString", async () => {
         console.log("Client is null, cannot proceed with test.", { error });
         return;
     }
-    const cmd = new Command();
-    cmd.setCmd("SET");
-    cmd.setArgsList(["k1", "lmao"]);
+    const cmd = create(CommandSchema, {
+        cmd: "SET",
+        args: ["k1", "lmao"],
+    });
     const { response, error: setError } = await client.Fire(cmd);
     const { response: response2, error: setError2 } = await client.FireString("GET k1");
     console.log({ response, setError });
     console.log({ response2, setError2 });
-    expect(response.getVStr()).toBe("OK");
-    expect(response2.getVStr()).toBe("lmao");
+    expect(response?.value.value).toBe("OK");
+    expect(response2?.value.value).toBe("lmao");
     expect(setError).toBeNull();
     expect(setError2).toBeNull();
+});
+
+
+// TODO : Fix the watch test, just wrote it now for the sake of it
+test("set, get, Fire, FireString with watch", async () => {
+    const { client, error } = await NewClient("localhost", 7379);
+    if (!client || error) {
+        console.log("Client is null, cannot proceed with test.", { error });
+        return;
+    }
+    const { response: response3, error: setError3 } = await client.FireString("GET.WATCH k1");
+    const { iterator, error: itrError } = await client.WatchChGetter(client);
+    console.log({ response3, setError3 });
+    if (itrError || !iterator) {
+        console.log("Error fetching iterator", itrError);
+    } else {
+        console.log("Iterator fetched successfully");
+        for await (const item of iterator) {
+            console.log("item", item.value.value);
+            break;
+        }
+        console.log("done with iterator");
+    }
 });

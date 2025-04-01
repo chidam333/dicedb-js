@@ -1,8 +1,8 @@
 import { randomUUIDv7, type Socket } from "bun";
 import { read, write } from "./io/io.ts";
-import type { Command, Response } from "./wire/proto/cmd_pb.ts";
+import type { Command, Response } from "./gen/proto/cmd_pb.ts";
 import { create } from "@bufbuild/protobuf";
-import { CommandSchema, ResponseSchema } from "./wire/proto/cmd_pb.ts";
+import { CommandSchema, ResponseSchema } from "./gen/proto/cmd_pb.ts";
 
 enum CommandName {
     HANDSHAKE = "HANDSHAKE",
