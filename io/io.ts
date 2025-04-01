@@ -1,6 +1,7 @@
 import type { Command, Response } from "../gen/proto/cmd_pb";
 import { CommandSchema, ResponseSchema } from "../gen/proto/cmd_pb";
 import { create, toBinary, fromBinary } from "@bufbuild/protobuf";
+import { Socket, connect } from "net";
 
 export function read(data: Buffer): { response: Response | null; error: Error | null } {
     let response: Response | null = null;
@@ -12,7 +13,7 @@ export function read(data: Buffer): { response: Response | null; error: Error | 
     return { response, error: null };
 }
 
-export function write(conn: Bun.Socket<undefined>, cmd: Command): Error | null {
+export function write(conn: Socket, cmd: Command): Error | null {
     // Explicit type for cmd
     let resp: Uint8Array;
     try {

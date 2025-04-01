@@ -1,4 +1,5 @@
-import { randomUUIDv7, type Socket } from "bun";
+import { randomUUID } from "crypto";
+import {Socket, connect} from "net";
 import { read, write } from "./io/io.ts";
 import type { Command, Response } from "./gen/proto/cmd_pb.ts";
 import { create } from "@bufbuild/protobuf";
@@ -11,9 +12,9 @@ enum CommandName {
 }
 
 interface Client {
-    id: string ;
-    conn: Bun.Socket<undefined> | null;
-    watchConn: Bun.Socket<undefined> | null;
+    id: string;
+    conn: Socket | null;
+    watchConn: Socket | null;
     host: string;
     port: number;
     watchCh: Response[];
@@ -51,7 +52,7 @@ function simpleWatch(client: Client, data: Buffer) {
 async function establishWatchConnection(
     client: Client,
     onData: (client: Client, data: Buffer) => void
-): Promise<{ conn: Socket<undefined> | null; error: Error | null }> {
+): Promise<{ conn: Socket | null; error: Error | null }> {
     return await newConn(client.host!, client.port!, client, onData);
 }
 
@@ -111,36 +112,27 @@ async function newConn(
     port: number,
     client: Client,
     onData: (client: Client, data: Buffer) => void
-): Promise<{ conn: Socket<undefined> | null; error: Error | null }> {
-    try {
-        const conn = await Bun.connect({
-            hostname: host,
-            port: port,
-            socket: {
-                data(socket, data) {
-                    onData(client, data);
-                },
-                open(socket) {
-                    const response = socket.setKeepAlive(true, 5 * SECOND);
-                    console.log(
-                        `\x1b[32mSocket opened and keep-alive set. Response : ${response} ${onData.name}\x1b[0m`
-                    );
-                },
-                error(error) {
-                    console.error("Socket error:", error);
-                },
-                close() {
-                    console.log("Socket closed.");
-                },
-                drain(socket) {
-                    console.log("Socket drained.");
-                },
-            },
+): Promise<{ conn: Socket | null; error: Error | null }> {
+    return new Promise((resolve) => {
+        const conn = connect({ host, port }, () => {
+            conn.setKeepAlive(true, 5 * SECOND);
+            console.log(`Socket opened and keep-alive set.`);
+            resolve({ conn, error: null });
         });
-        return { conn, error: null };
-    } catch (error) {
-        return { conn: null, error: error as Error };
-    }
+        conn.on("data", (data: Buffer) => {
+            onData(client, data);
+        });
+        conn.on("error", (err) => {
+            console.error("Socket error:", err);
+            resolve({ conn: null, error: err });
+        });
+        conn.on("close", () => {
+            console.log("Socket closed.");
+        });
+        conn.on("drain", () => {
+            console.log("Socket drained.");
+        });
+    });
 }
 
 export async function NewClient(
@@ -150,11 +142,11 @@ export async function NewClient(
 ): Promise<{ client: Client | null; error: null | Error }> {
     const watchCh: Response[] = [];
     const client: Client = {
-        id: randomUUIDv7(),
+        id: randomUUID(),
         conn: null,
+        watchConn: null,
         host: host,
         port: port,
-        watchConn: null,
         watchCh,
         watchIterator: null,
         WatchChGetter: () => WatchChGetter(client),
@@ -188,7 +180,7 @@ export async function NewClient(
 export async function fire(
     client: Client,
     cmd: any,
-    conn: Bun.Socket<undefined>
+    conn: Socket
 ): Promise<{ response: Response | null; error: Error | null }> {
     if (!conn) {
         return { response: null, error: new Error("Client not connected") };
