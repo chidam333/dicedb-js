@@ -1,6 +1,6 @@
 # dicedb-client
 
-A client library for interacting with a DiceDB server.
+A performant type safe client library for interacting with a DiceDB server.
 
 ## Installation
 
@@ -10,12 +10,12 @@ Install dependencies using `bun`:
 bun install
 ```
 
-## Running the Project
+## Running the Example
 
-To run the project:
+To run the example:
 
 ```bash
-bun run index.ts
+bun run example.ts
 ```
 
 ## Testing
@@ -45,22 +45,23 @@ if (error) {
 
 ### 2. Execute Commands
 
-You can execute commands using the `Fire` or `FireString` methods.
+You can execute commands using the Fire or FireString methods.
 
-#### Using `Fire` with a `Command` object:
+#### Using `Fire` with a Command object:
 
 ```ts
-import { Command } from "./index.js";
+import { create, CommandSchema } from "./index.js";
 
-const cmd = new Command();
-cmd.setCmd("SET");
-cmd.setArgsList(["key", "value"]);
+const cmd = create(CommandSchema, { 
+    cmd: "SET", 
+    args: ["key", "value"] 
+});
 
 const { response, error } = await client.Fire(cmd);
 if (error) {
     console.error("Error executing command:", error);
 } else {
-    console.log("Response:", response?.getVStr());
+    console.log("Response:", response?.value);
 }
 ```
 
@@ -71,7 +72,7 @@ const { response, error } = await client.FireString("GET key");
 if (error) {
     console.error("Error executing command:", error);
 } else {
-    console.log("Response:", response?.getVStr());
+    console.log("Response:", response?.value);
 }
 ```
 
@@ -85,7 +86,7 @@ if (error) {
     console.error("Error setting up watch:", error);
 } else {
     for await (const item of iterator) {
-        console.log("Watched item:", item.getVStr());
+        console.log("Watched item:", item.value);
     }
 }
 ```
