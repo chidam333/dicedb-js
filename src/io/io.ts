@@ -1,5 +1,5 @@
-import type { Command, Response } from "../gen/proto/cmd_pb";
-import { CommandSchema, ResponseSchema } from "../gen/proto/cmd_pb";
+import type { Command, Response } from "../proto/cmd_pb";
+import { CommandSchema, ResponseSchema } from "../proto/cmd_pb";
 import { create, toBinary, fromBinary } from "@bufbuild/protobuf";
 import { Socket, connect } from "net";
 

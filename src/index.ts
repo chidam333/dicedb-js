@@ -1,9 +1,9 @@
 import { randomUUID } from "crypto";
 import { Socket, connect } from "net";
-import { read, write } from "../io/io.ts";
-import type { Command, Response } from "../gen/proto/cmd_pb.ts";
+import { read, write } from "./io/io.ts";
+import type { Command, Response } from "./proto/cmd_pb.ts";
 import { create } from "@bufbuild/protobuf";
-import { CommandSchema } from "../gen/proto/cmd_pb.ts";
+import { CommandSchema } from "./proto/cmd_pb.ts";
 import { wire } from "./wire.ts";
 import { cmd } from "./cmd.ts";
 import type { Cmd } from "./cmd.ts";
