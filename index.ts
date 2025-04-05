@@ -5,10 +5,10 @@ import type { Command, Response } from "./gen/proto/cmd_pb.ts";
 import { create } from "@bufbuild/protobuf";
 import { CommandSchema } from "./gen/proto/cmd_pb.ts";
 import { wire } from "./wire.ts";
-import {cmd} from "./cmd.ts";
-import type {Cmd} from "./cmd.ts";
+import { cmd } from "./cmd.ts";
+import type { Cmd } from "./cmd.ts";
+import type { Result, Maybe } from "./result.ts";
 
-type Maybe<T> = T | null;
 
 interface Client {
     id: string;
@@ -18,13 +18,10 @@ interface Client {
     port: number;
     watchCh: Response[];
     watchIterator: Maybe<AsyncIterable<Response>>;
-    data?: Maybe<Response>;
-    Fire: (cmd: Command) => Promise<{ response: Maybe<Response>; error: Maybe<Error> }>;
-    FireString: (cmd: string, ...args: string[]) => Promise<{ response: Maybe<Response>; error: Maybe<Error> }>;
-    WatchChGetter: (client: Client) => Promise<{
-        iterator: Maybe<AsyncIterable<Response>>;
-        error: Maybe<Error>;
-    }>;
+    data: Maybe<Response>;
+    Fire: (cmd: Command) => Promise<Result<Response, Error>>;
+    FireString: (cmd: string, ...args: string[]) => Promise<Result<Response, Error>>;
+    WatchChGetter: (client: Client) => Promise<Result<AsyncIterable<Response>, Error>>;
 }
 
 const SECOND = 1000;
@@ -51,8 +48,8 @@ function simpleWatch(client: Client, data: Buffer) {
 async function establishWatchConnection(
     client: Client,
     onData: (client: Client, data: Buffer) => void
-): Promise<{ conn: Socket | null; error: Error | null }> {
-    return await newConn(client.host!, client.port!, client, onData);
+): Promise<Result<Socket, Error>> {
+    return await newConn(client.host, client.port, client, onData);
 }
 
 async function createWatchIterator(client: Client): Promise<AsyncIterable<Response>> {
@@ -79,51 +76,57 @@ async function createWatchIterator(client: Client): Promise<AsyncIterable<Respon
     };
 }
 
-export async function WatchChGetter(client: Client): Promise<{
-    iterator: AsyncIterable<Response> | null;
-    error: Error | null;
-}> {
+// Updated WatchChGetter to use Result type
+export async function WatchChGetter(client: Client): Promise<Result<AsyncIterable<Response>, Error>> {
     if (client.watchIterator != null) {
-        return { iterator: client.watchIterator, error: null };
+        return { response: client.watchIterator, error: null };
     }
-    const { conn, error } = await establishWatchConnection(client, simpleWatch);
-    if (error || !conn || !client.id) {
+    const { response: conn, error } = await establishWatchConnection(client, simpleWatch);
+    if (error) {
         console.error("Error establishing watch connection:", error);
-        return { iterator: null, error };
+        return { response: null, error };
     }
     client.watchConn = conn;
-    const cmd = wire.command({
-        cmd: CommandName.HANDSHAKE,
-        args: [client.id, "watch"],
-    });
-    const { response, error: handShakeError } = await fire(client, cmd, conn);
+    const { response, error: handShakeError } = await fire(
+        client,
+        wire.command({
+            cmd: cmd["HANDSHAKE"],
+            args: [client.id, "watch"],
+        }),
+        conn
+    );
     if (handShakeError) {
         console.error("Error during handshake:", handShakeError);
-        return { iterator: null, error: handShakeError };
+        return { response: null, error: handShakeError };
     }
     const watchIterator = await createWatchIterator(client);
     client.watchIterator = watchIterator;
-    return { iterator: watchIterator, error: null };
+    return { response: watchIterator, error: null };
 }
 
+// Updated newConn to use Result type
 async function newConn(
     host: string,
     port: number,
     client: Client,
     onData: (client: Client, data: Buffer) => void
-): Promise<{ conn: Socket | null; error: Error | null }> {
-    return new Promise((resolve) => {
+): Promise<Result<Socket, Error>> {
+    return await new Promise((resolve) => {
         const conn = connect({ host, port }, () => {
             conn.setKeepAlive(true, 5 * SECOND);
             console.log(`Socket opened and keep-alive set.`);
-            resolve({ conn, error: null });
+            resolve({ response: conn, error: null });
         });
         conn.on("data", (data: Buffer) => {
             onData(client, data);
         });
         conn.on("error", (err) => {
-            console.error("Socket connection error:", err.message , "\nTip : Check port number and if dicedb is ruunning in that port");
-            resolve({ conn: null, error: err });
+            console.error(
+                "Socket connection error:",
+                err.message,
+                "\nTip : Check port number and if dicedb is ruunning in that port"
+            );
+            resolve({ response: null, error: err });
         });
         conn.on("close", () => {
             console.log("Socket closed.");
@@ -134,11 +137,12 @@ async function newConn(
     });
 }
 
+// Updated NewClient to use Result type
 export async function NewClient(
     host: string,
     port: number,
     option?: Partial<Client>
-): Promise<{ client: Client | null; error: null | Error }> {
+): Promise<Result<Client, Error>> {
     const watchCh: Response[] = [];
     const client: Client = {
         id: randomUUID(),
@@ -153,10 +157,10 @@ export async function NewClient(
         FireString: (cmd) => FireString(client, cmd),
         data: null,
     };
-    let { conn, error } = await newConn(host, port, client, simpleData);
+    let { response: conn, error } = await newConn(host, port, client, simpleData);
     client.conn = conn;
-    if (error || !client || client.conn == null) {
-        return { client: null, error };
+    if (error) {
+        return { response: null, error };
     }
     client.data = null;
     client.id = option?.id ?? client.id;
@@ -164,23 +168,25 @@ export async function NewClient(
     client.watchConn = option?.watchConn ?? client.watchConn;
     client.Fire = option?.Fire ?? client.Fire;
     client.FireString = option?.FireString ?? client.FireString;
-    const cmd = wire.command({
-        cmd: CommandName.HANDSHAKE,
-        args: [client.id, "watch"],
-    });
-    const { response, error: handShakeError } = await client.Fire(cmd);
+    const { response, error: handShakeError } = await client.Fire(
+        wire.command({
+            cmd: cmd["HANDSHAKE"],
+            args: [client.id, "watch"],
+        })
+    );
     if (handShakeError) {
         console.error("Error during handshake:", handShakeError);
-        return { client: null, error: handShakeError };
+        return { response: null, error: handShakeError };
     }
-    return { client, error: null };
+    return { response: client, error: null };
 }
 
+// Updated fire to use Result type
 export async function fire(
     client: Client,
     cmd: any,
     conn: Socket
-): Promise<{ response: Response | null; error: Error | null }> {
+): Promise<Result<Response, Error>> {
     if (!conn) {
         return { response: null, error: new Error("Client not connected") };
     }
@@ -193,27 +199,40 @@ export async function fire(
         }
         await new Promise((resolve) => setTimeout(resolve, 100));
     }
-    const responseAndError = { response: client.data, error: null };
+    const result = { response: client.data, error: null };
     client.data = null;
-    return responseAndError;
+    return result;
 }
 
-export async function Fire(client: Client, cmd: Command): Promise<{ response: Response | null; error: Error | null }> {
+export async function Fire(client: Client, cmd: Command): Promise<Result<Response, Error>> {
     return fire(client, cmd, client.conn!);
 }
 
 export async function FireString(
     client: Client,
     cmdStr: string
-): Promise<{ response: Response | null; error: Error | null }> {
+): Promise<Result<Response, Error>> {
     cmdStr = cmdStr.trim();
     const tokens = cmdStr.split(" ");
+    if (!Object.values(cmd).includes(tokens[0] as Cmd)) {
+        throw new Error(`Invalid command: ${tokens[0]}`);
+    }
+    let isValidCommand = false;
+    for (const cmdEach of Object.values(cmd)) {
+        if (tokens[0] === cmdEach) {
+            isValidCommand = true;
+            break;
+        }
+    }
+    if (!isValidCommand) {
+        return { response: null, error: new Error(`Invalid command: ${tokens[0]}`) };
+    }
     const command = wire.command({
-        cmd: tokens[0],
+        cmd: tokens[0] as Cmd,
         args: tokens.length > 1 ? tokens.slice(1) : [],
     });
     return Fire(client, command);
 }
 
-export type { Command, Response };
+export type { Command, Response, Client, cmd };
 export { CommandSchema, create, wire };
