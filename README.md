@@ -8,6 +8,12 @@
 
 <br/>
 
+Follow [dicedb.io](https://dicedb.io/get-started/installation/) (or) just use this docker command:
+
+```bash
+  docker run -p 7379:7379 dicedb/dicedb:latest 
+```
+
 ## Installation
 
 Install dependencies using `bun`:
@@ -40,7 +46,7 @@ if (error) {
 ```ts
 
 
-// Using `Fire` with a Command object:
+// Using `Fire` with a wire.command:
 
 import { wire } from "dicedb-sdk";
 
