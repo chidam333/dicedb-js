@@ -1,7 +1,13 @@
 {
   "name": "dicedb-sdk",
   "description": "A simple, fast, and efficient dice-db client",
-  "version": "1.0.7",
+  "version": "1.0.8",
+  "homepage": "https://dicedb.io",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/chidam333/dicedb-js.git"
+  },
+  "license": "BSD-3-Clause",
   "main": "package/index.js",
   "module": "index.ts",
   "types": "index.ts",

@@ -1,6 +1,5 @@
 import { expect, test, mock } from "bun:test";
-import { NewClient, CommandSchema, ResponseSchema } from "./index.js";
-import type { Command, Response } from "./gen/proto/cmd_pb.js";
+import { NewClient, CommandSchema } from "./index.js";
 import { create } from "@bufbuild/protobuf";
 
 test("invalid port", async () => {
