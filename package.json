@@ -1,7 +1,7 @@
 {
   "name": "dicedb-sdk",
   "description": "A simple, fast, and efficient dice-db client",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "homepage": "https://dicedb.io",
   "repository": {
     "type": "git",
@@ -33,10 +33,9 @@
   },
   "keywords": [
     "dice-db",
-    "dicedb client",
-    "type-Safe database sdk",
-    "real-time data watcher",
-    "protobuf integration"
+    "dicedb-js",
+    "typesafe",
+    "dicedb-client"
   ],
   "files": [
     "dist",

@@ -1,4 +1,4 @@
-import { NewClient, wire, cmd } from "./index.ts";
+import { NewClient, wire, cmd } from "./index.ts"; // replace index.ts with "dicedb-sdk"
 
 async function processIterator(iterator: AsyncIterable<any>) {
     console.log("\x1b[32mIterator processing started\x1b[0m");

@@ -1,13 +1,13 @@
 import { randomUUID } from "crypto";
 import { Socket, connect } from "net";
-import { read, write } from "./io/io.ts";
-import type { Command, Response } from "./proto/cmd_pb.ts";
+import { read, write } from "./io/io";
+import type { Command, Response } from "./proto/cmd_pb";
 import { create } from "@bufbuild/protobuf";
-import { CommandSchema } from "./proto/cmd_pb.ts";
-import { wire } from "./wire.ts";
-import { cmd } from "./cmd.ts";
-import type { Cmd } from "./cmd.ts";
-import type { Result, Maybe } from "./result.ts";
+import { CommandSchema } from "./proto/cmd_pb";
+import { wire } from "./wire";
+import { cmd } from "./cmd";
+import type { Cmd } from "./cmd";
+import type { Result, Maybe } from "./result";
 
 
 interface Client {
