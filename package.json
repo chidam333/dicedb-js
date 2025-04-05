@@ -4,7 +4,7 @@
   "version": "1.0.7",
   "main": "package/index.js",
   "module": "index.ts",
-  "type": "module",
+  "types": "index.ts",
   "devDependencies": {
     "@bufbuild/buf": "^1.51.0",
     "@bufbuild/protoc-gen-es": "^2.2.5",
@@ -12,7 +12,7 @@
   },
   "scripts": {
     "build": "bun build index.ts --outdir=dist --minify",
-    "package": "bun build index.ts --target=node --outdir=package --minify",
+    "package": "bun build index.ts --target=node --outdir=dist --minify",
     "dev": "bun index.ts",
     "test": "bun test",
     "lint": "bun run eslint .",
@@ -31,5 +31,8 @@
     "type-Safe database sdk",
     "real-time data watcher",
     "protobuf integration"
+  ],
+  "files": [
+    "dist"
   ]
 }

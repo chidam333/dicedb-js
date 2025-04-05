@@ -4,14 +4,8 @@ import { read, write } from "./io/io.ts";
 import type { Command, Response } from "./gen/proto/cmd_pb.ts";
 import { create } from "@bufbuild/protobuf";
 import { CommandSchema, ResponseSchema } from "./gen/proto/cmd_pb.ts";
-
-export const CommandName = {
-    HANDSHAKE: "HANDSHAKE",
-    SET: "SET",
-    GET: "GET",
-} as const;
-
-export type CommandName = typeof CommandName[keyof typeof CommandName];
+import {cmd} from "./cmd.ts";
+import type {Cmd} from "./cmd.ts";
 
 type Maybe<T> = T | null;
 
