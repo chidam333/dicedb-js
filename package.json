@@ -1,16 +1,16 @@
 {
   "name": "dicedb-sdk",
   "description": "A simple, fast, and efficient dice-db client",
-  "version": "1.0.8",
+  "version": "1.1.0",
   "homepage": "https://dicedb.io",
   "repository": {
     "type": "git",
     "url": "https://github.com/chidam333/dicedb-js.git"
   },
   "license": "BSD-3-Clause",
-  "main": "package/index.js",
+  "main": "dist/index.js",
   "module": "index.ts",
-  "types": "index.ts",
+  "types": "src/index.ts",
   "devDependencies": {
     "@bufbuild/buf": "^1.51.0",
     "@bufbuild/protoc-gen-es": "^2.2.5",
@@ -18,7 +18,7 @@
   },
   "scripts": {
     "build": "bun build index.ts --outdir=dist --minify",
-    "package": "bun build index.ts --target=node --outdir=dist --minify",
+    "package": "bun build src/index.ts --target=node --outdir=dist --minify",
     "dev": "bun index.ts",
     "test": "bun test",
     "lint": "bun run eslint .",
@@ -39,6 +39,7 @@
     "protobuf integration"
   ],
   "files": [
-    "dist"
+    "dist",
+    "src"
   ]
 }

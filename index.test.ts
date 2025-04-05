@@ -1,8 +1,5 @@
 import { expect, test, mock } from "bun:test";
-import { NewClient, CommandSchema } from "./index.js";
-import { create } from "@bufbuild/protobuf";
-import { wire } from "./index.js";
-import { cmd } from "./cmd.js";
+import { NewClient, cmd, wire } from "./src/index.js";
 
 test("invalid port", async () => {
     const { response: client, error } = await NewClient("localhost", -1);

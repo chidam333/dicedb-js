@@ -23,10 +23,6 @@ bun add dicedb-sdk
 npm install dicedb-sdk
 ```
 
-```bash
-npm i dicedb-sdk
-```
-
 ## API Usage
 
 ### 1. Create a New Client
@@ -34,7 +30,7 @@ npm i dicedb-sdk
 ```ts
 import { NewClient } from "dicedb-sdk";
 
-const { client, error } = await NewClient("localhost", 7379);
+const { response:client, error } = await NewClient("localhost", 7379);
 if (error) {
     console.error("Failed to connect:", error);
 } else {
@@ -79,7 +75,7 @@ if (getError) {
 Use the `WatchChGetter` method to receive an async iterator for watching changes.
 
 ```ts
-const { iterator, error: watchInitError } = await client.WatchChGetter(client);
+const { response:iterator, error: watchInitError } = await client.WatchChGetter(client);
 if (watchInitError) {
     console.error("Error setting up watch:", watchInitError);
 } else {

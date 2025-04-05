@@ -1,4 +1,4 @@
-import { NewClient, wire } from "./index.ts";
+import { NewClient, wire, cmd } from "./index.ts";
 
 async function processIterator(iterator: AsyncIterable<any>) {
     console.log("\x1b[32mIterator processing started\x1b[0m");
@@ -18,7 +18,7 @@ async function log(message: string) {
         console.error("Client couldn't be created", { error });
         return;
     }
-    const { response, error: setError } = await client.Fire(wire.command({ cmd: "SET", args: ["k1", "lmao"] }));
+    const { response, error: setError } = await client.Fire(wire.command({ cmd: cmd.SET, args: ["k1", "lmao"] }));
     const { response: response2, error: setError2 } = await client.FireString("GET k1");
     const { response: response3, error: setError3 } = await client.FireString("GET.WATCH k1");
     const { response: iterator, error: itrError } = await client.WatchChGetter(client);

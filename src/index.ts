@@ -1,9 +1,9 @@
 import { randomUUID } from "crypto";
 import { Socket, connect } from "net";
-import { read, write } from "./io/io.ts";
-import type { Command, Response } from "./gen/proto/cmd_pb.ts";
+import { read, write } from "../io/io.ts";
+import type { Command, Response } from "../gen/proto/cmd_pb.ts";
 import { create } from "@bufbuild/protobuf";
-import { CommandSchema } from "./gen/proto/cmd_pb.ts";
+import { CommandSchema } from "../gen/proto/cmd_pb.ts";
 import { wire } from "./wire.ts";
 import { cmd } from "./cmd.ts";
 import type { Cmd } from "./cmd.ts";
@@ -76,7 +76,6 @@ async function createWatchIterator(client: Client): Promise<AsyncIterable<Respon
     };
 }
 
-// Updated WatchChGetter to use Result type
 export async function WatchChGetter(client: Client): Promise<Result<AsyncIterable<Response>, Error>> {
     if (client.watchIterator != null) {
         return { response: client.watchIterator, error: null };
@@ -104,7 +103,6 @@ export async function WatchChGetter(client: Client): Promise<Result<AsyncIterabl
     return { response: watchIterator, error: null };
 }
 
-// Updated newConn to use Result type
 async function newConn(
     host: string,
     port: number,
@@ -137,7 +135,6 @@ async function newConn(
     });
 }
 
-// Updated NewClient to use Result type
 export async function NewClient(
     host: string,
     port: number,
@@ -181,7 +178,6 @@ export async function NewClient(
     return { response: client, error: null };
 }
 
-// Updated fire to use Result type
 export async function fire(
     client: Client,
     cmd: any,
@@ -234,5 +230,5 @@ export async function FireString(
     return Fire(client, command);
 }
 
-export type { Command, Response, Client, cmd };
-export { CommandSchema, create, wire };
+export type { Command, Response, Client, Cmd };
+export { CommandSchema, create, wire, cmd };
