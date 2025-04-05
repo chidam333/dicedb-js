@@ -4,7 +4,7 @@
 
 # dicedb-client
 
-<h3>A <span style="color: cyan;">blazingly fast</span> type safe client library for interacting with a DiceDB server.</h3>
+<h3>A <span style="color: cyan;">blazingly fast</span> type safe client library for interacting with DiceDB server.</h3>
 
 <br/>
 
@@ -15,12 +15,13 @@ Install dependencies using `bun`:
 ```bash
 bun add dicedb-sdk
 ```
+```bash
+npm install dicedb-sdk
+```
 
 ## API Usage
 
 ### 1. Create a New Client
-
-Use the `NewClient` function to create a new client instance.
 
 ```ts
 import { NewClient } from "dicedb-sdk";
@@ -35,46 +36,44 @@ if (error) {
 
 ### 2. Execute Commands
 
-You can execute commands using the Fire or FireString methods.
-
 
 ```ts
 
+
 // Using `Fire` with a Command object:
 
-import { create, CommandSchema } from "dicedb-sdk";
+import { wire } from "dicedb-sdk";
 
-const cmd = create(CommandSchema, {
+const { response, error } = await client.Fire(wire.command({
     cmd: "SET",
     args: ["key", "value"],
-});
-
-const { response, error } = await client.Fire(cmd);
+}));
 if (error) {
     console.error("Error executing command:", error);
 } else {
     console.log("Response:", response?.value);
 }
+
+
 
 // Using `FireString` with a command string:
 
-const { response, error } = await client.FireString("GET key");
-if (error) {
-    console.error("Error executing command:", error);
+const { response: getResponse, error: getError } = await client.FireString("GET key");
+if (getError) {
+    console.error("Error executing command:", getError);
 } else {
-    console.log("Response:", response?.value);
+    console.log("Response:", getResponse?.value);
 }
-
 ```
 
 ### 3. Watch for Changes
 
-Use the `WatchChGetter` method to get an async iterator for watching changes.
+Use the `WatchChGetter` method to receive an async iterator for watching changes.
 
 ```ts
-const { iterator, error } = await client.WatchChGetter(client);
-if (error) {
-    console.error("Error setting up watch:", error);
+const { iterator, error: watchInitError } = await client.WatchChGetter(client);
+if (watchInitError) {
+    console.error("Error setting up watch:", watchInitError);
 } else {
     for await (const item of iterator) {
         console.log("Watched item:", item.value);
