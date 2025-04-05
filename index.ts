@@ -1,9 +1,10 @@
 import { randomUUID } from "crypto";
-import {Socket, connect} from "net";
+import { Socket, connect } from "net";
 import { read, write } from "./io/io.ts";
 import type { Command, Response } from "./gen/proto/cmd_pb.ts";
 import { create } from "@bufbuild/protobuf";
-import { CommandSchema, ResponseSchema } from "./gen/proto/cmd_pb.ts";
+import { CommandSchema } from "./gen/proto/cmd_pb.ts";
+import { wire } from "./wire.ts";
 
 enum CommandName {
     HANDSHAKE = "HANDSHAKE",
@@ -93,7 +94,7 @@ export async function WatchChGetter(client: Client): Promise<{
         return { iterator: null, error };
     }
     client.watchConn = conn;
-    const cmd = create(CommandSchema, {
+    const cmd = wire.command({
         cmd: CommandName.HANDSHAKE,
         args: [client.id, "watch"],
     });
@@ -123,7 +124,7 @@ async function newConn(
             onData(client, data);
         });
         conn.on("error", (err) => {
-            console.error("Socket error:", err);
+            console.error("Socket connection error:", err.message , "\nTip : Check port number and if dicedb is ruunning in that port");
             resolve({ conn: null, error: err });
         });
         conn.on("close", () => {
@@ -165,7 +166,7 @@ export async function NewClient(
     client.watchConn = option?.watchConn ?? client.watchConn;
     client.Fire = option?.Fire ?? client.Fire;
     client.FireString = option?.FireString ?? client.FireString;
-    const cmd = create(CommandSchema, {
+    const cmd = wire.command({
         cmd: CommandName.HANDSHAKE,
         args: [client.id, "watch"],
     });
@@ -199,10 +200,7 @@ export async function fire(
     return responseAndError;
 }
 
-export async function Fire(
-    client: Client,
-    cmd: Command
-): Promise<{ response: Response | null; error: Error | null }> {
+export async function Fire(client: Client, cmd: Command): Promise<{ response: Response | null; error: Error | null }> {
     return fire(client, cmd, client.conn!);
 }
 
@@ -212,7 +210,7 @@ export async function FireString(
 ): Promise<{ response: Response | null; error: Error | null }> {
     cmdStr = cmdStr.trim();
     const tokens = cmdStr.split(" ");
-    const command = create(CommandSchema, {
+    const command = wire.command({
         cmd: tokens[0],
         args: tokens.length > 1 ? tokens.slice(1) : [],
     });
@@ -220,4 +218,4 @@ export async function FireString(
 }
 
 export type { Command, Response };
-export { CommandSchema, ResponseSchema, create };
+export { CommandSchema, create, wire };
