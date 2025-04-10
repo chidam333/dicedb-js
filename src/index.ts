@@ -9,7 +9,6 @@ import { cmd } from "./cmd";
 import type { Cmd } from "./cmd";
 import type { Result, Maybe } from "./result";
 
-
 interface Client {
     id: string;
     conn: Maybe<Socket>;
@@ -45,13 +44,6 @@ function simpleWatch(client: Client, data: Buffer) {
     client.watchCh.push(response);
 }
 
-async function establishWatchConnection(
-    client: Client,
-    onData: (client: Client, data: Buffer) => void
-): Promise<Result<Socket, Error>> {
-    return await newConn(client.host, client.port, client, onData);
-}
-
 async function createWatchIterator(client: Client): Promise<AsyncIterable<Response>> {
     return {
         [Symbol.asyncIterator]() {
@@ -76,11 +68,11 @@ async function createWatchIterator(client: Client): Promise<AsyncIterable<Respon
     };
 }
 
-export async function WatchChGetter(client: Client): Promise<Result<AsyncIterable<Response>, Error>> {
+async function WatchChGetter(client: Client): Promise<Result<AsyncIterable<Response>, Error>> {
     if (client.watchIterator != null) {
         return { response: client.watchIterator, error: null };
     }
-    const { response: conn, error } = await establishWatchConnection(client, simpleWatch);
+    const { response: conn, error } = await newConn(client.host, client.port, client, simpleWatch);
     if (error) {
         console.error("Error establishing watch connection:", error);
         return { response: null, error };
@@ -135,11 +127,7 @@ async function newConn(
     });
 }
 
-export async function NewClient(
-    host: string,
-    port: number,
-    option?: Partial<Client>
-): Promise<Result<Client, Error>> {
+async function NewClient(host: string, port: number, option?: Partial<Client>): Promise<Result<Client, Error>> {
     const watchCh: Response[] = [];
     const client: Client = {
         id: randomUUID(),
@@ -168,7 +156,7 @@ export async function NewClient(
     const { response, error: handShakeError } = await client.Fire(
         wire.command({
             cmd: cmd["HANDSHAKE"],
-            args: [client.id, "watch"],
+            args: [client.id, "command"],
         })
     );
     if (handShakeError) {
@@ -178,11 +166,8 @@ export async function NewClient(
     return { response: client, error: null };
 }
 
-export async function fire(
-    client: Client,
-    cmd: any,
-    conn: Socket
-): Promise<Result<Response, Error>> {
+//TODO : remove new Error and use custom error string
+async function fire(client: Client, cmd: any, conn: Socket): Promise<Result<Response, Error>> {
     if (!conn) {
         return { response: null, error: new Error("Client not connected") };
     }
@@ -191,7 +176,7 @@ export async function fire(
     const startTime = Date.now();
     while (!client.data) {
         if (Date.now() - startTime > 5000) {
-            return { response: null, error: new Error(`Timeout waiting for response to command: ${cmd.getCmd()}`) };
+            return { response: null, error: new Error(`Timeout waiting for response to command`) };
         }
         await new Promise((resolve) => setTimeout(resolve, 100));
     }
@@ -200,14 +185,11 @@ export async function fire(
     return result;
 }
 
-export async function Fire(client: Client, cmd: Command): Promise<Result<Response, Error>> {
+async function Fire(client: Client, cmd: Command): Promise<Result<Response, Error>> {
     return fire(client, cmd, client.conn!);
 }
 
-export async function FireString(
-    client: Client,
-    cmdStr: string
-): Promise<Result<Response, Error>> {
+async function FireString(client: Client, cmdStr: string): Promise<Result<Response, Error>> {
     cmdStr = cmdStr.trim();
     const tokens = cmdStr.split(" ");
     if (!Object.values(cmd).includes(tokens[0] as Cmd)) {
@@ -231,4 +213,4 @@ export async function FireString(
 }
 
 export type { Command, Response, Client, Cmd };
-export { CommandSchema, create, wire, cmd };
+export { CommandSchema, create, wire, cmd, NewClient };
