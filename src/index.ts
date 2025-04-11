@@ -18,6 +18,43 @@ interface Client {
     watchCh: Response[];
     watchIterator: Maybe<AsyncIterable<Response>>;
     data: Maybe<Response>;
+    /**
+     * Example Usage:
+     * ```
+     * const { response, error } = await client.Fire(wire.command({ cmd: "GET", args: ["k"] }));
+     * ```
+     * ```
+     * 
+     * 
+     * 
+     * ```
+     * Type definition of Response
+     * ```
+        export type Response = Message<"wire.Response"> & {
+        err: string;
+        value: {
+            value: boolean;
+            case: "vNil";
+        } | {
+            value: bigint;
+            case: "vInt";
+        } | {  
+            value: string;
+            case: "vStr";
+        } | {  
+            value: number;
+            case: "vFloat";
+        } | {  
+            value: Uint8Array;
+            case: "vBytes";
+        } | { case: undefined; value?: undefined };
+        attrs?: JsonObject;
+        vList: Value[];
+        vSsMap: { [key: string]: string };
+        };
+        ```
+     * @returns `{ response: Response, error: Error }`
+     */
     Fire: (cmd: Command) => Promise<Result<Response, Error>>;
     FireString: (cmd: string, ...args: string[]) => Promise<Result<Response, Error>>;
     WatchChGetter: (client: Client) => Promise<Result<AsyncIterable<Response>, Error>>;
@@ -81,7 +118,7 @@ async function WatchChGetter(client: Client): Promise<Result<AsyncIterable<Respo
     const { response, error: handShakeError } = await fire(
         client,
         wire.command({
-            cmd: cmd["HANDSHAKE"],
+            cmd: "HANDSHAKE",
             args: [client.id, "watch"],
         }),
         conn
@@ -155,7 +192,7 @@ async function NewClient(host: string, port: number, option?: Partial<Client>): 
     client.FireString = option?.FireString ?? client.FireString;
     const { response, error: handShakeError } = await client.Fire(
         wire.command({
-            cmd: cmd["HANDSHAKE"],
+            cmd: "HANDSHAKE",
             args: [client.id, "command"],
         })
     );
@@ -213,4 +250,4 @@ async function FireString(client: Client, cmdStr: string): Promise<Result<Respon
 }
 
 export type { Command, Response, Client, Cmd };
-export { CommandSchema, create, wire, cmd, NewClient };
+export { CommandSchema, create, wire, NewClient };
