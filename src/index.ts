@@ -8,57 +8,7 @@ import { wire } from "./wire";
 import { cmd } from "./cmd";
 import type { Cmd } from "./cmd";
 import type { Result, Maybe } from "./result";
-
-interface Client {
-    id: string;
-    conn: Maybe<Socket>;
-    watchConn: Maybe<Socket>;
-    host: string;
-    port: number;
-    watchCh: Response[];
-    watchIterator: Maybe<AsyncIterable<Response>>;
-    data: Maybe<Response>;
-    /**
-     * Example Usage:
-     * ```
-     * const { response, error } = await client.Fire(wire.command({ cmd: "GET", args: ["k"] }));
-     * ```
-     * ```
-     * 
-     * 
-     * 
-     * ```
-     * Type definition of Response
-     * ```
-        export type Response = Message<"wire.Response"> & {
-        err: string;
-        value: {
-            value: boolean;
-            case: "vNil";
-        } | {
-            value: bigint;
-            case: "vInt";
-        } | {  
-            value: string;
-            case: "vStr";
-        } | {  
-            value: number;
-            case: "vFloat";
-        } | {  
-            value: Uint8Array;
-            case: "vBytes";
-        } | { case: undefined; value?: undefined };
-        attrs?: JsonObject;
-        vList: Value[];
-        vSsMap: { [key: string]: string };
-        };
-        ```
-     * @returns `{ response: Response, error: Error }`
-     */
-    Fire: (cmd: Command) => Promise<Result<Response, Error>>;
-    FireString: (cmd: string, ...args: string[]) => Promise<Result<Response, Error>>;
-    WatchChGetter: (client: Client) => Promise<Result<AsyncIterable<Response>, Error>>;
-}
+import type {Client} from "./client";
 
 const SECOND = 1000;
 
