@@ -28,3 +28,8 @@ export const cmd = {
   
 
 export type Cmd = (typeof cmd)[keyof typeof cmd];
+
+export type WireCommandInput = {
+    cmd: Cmd;
+    args: Array<any>;
+};
