@@ -22,7 +22,7 @@ async function log(message: string) {
     console.log({response})
     const { response: response2, error: setError2 } = await client.FireString("GET k1");
     const { response: response3, error: setError3 } = await client.FireString("GET.WATCH k1");
-    const { response: iterator, error: itrError } = await client.WatchChGetter(client);
+    const { response: iterator, error: itrError } = await client.WatchChGetter();
 
     if (setError || setError2 || setError3 || itrError) {
         return console.error("Error processing commands:", { setError, setError2, setError3 });

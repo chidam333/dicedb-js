@@ -129,5 +129,5 @@ export interface Client {
         ```
      * @returns `{ response: AsyncIterable<Response>, error: Error }`
      */
-    WatchChGetter: (client: Client) => Promise<Result<AsyncIterable<Response>, Error>>;
+    WatchChGetter: () => Promise<Result<AsyncIterable<Response>, Error>>;
 }
