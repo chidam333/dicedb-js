@@ -41,8 +41,8 @@ async function log(message: string) {
         client.Fire(wire.command({ cmd: "SET", args: ["k1", `lmao + ${Math.random()}`] }));
     }, 2000);
     process.on("SIGINT", () => {
-        client?.conn?.end();
-        client?.watchConn?.end();
+        client.conn?.end();
+        client.watchConn?.end();
         console.log("\x1b[33mSIGINT signal received. Gracefully shutting down...\x1b[0m");
         process.exit(0);
     });
