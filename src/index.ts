@@ -1,7 +1,12 @@
 import { randomUUID } from "crypto";
 import { Socket, connect } from "net";
 import { read, write } from "./io/io";
-import type { Command, Response } from "./proto/cmd_pb";
+import type {Command, Response} from "./proto/cmd_pb";
+
+// working on porting to newer version of proto
+// import type { Command } from "./wire/cmd_pb";
+// import type { Result } from "./wire/res_pb";
+
 import { create } from "@bufbuild/protobuf";
 import { CommandSchema } from "./proto/cmd_pb";
 import { wire } from "./wire";
@@ -183,11 +188,11 @@ async function FireString(client: Client, cmdStr: string): Promise<Result<Respon
         throw new Error(`Invalid command: ${tokens[0]}`);
     }
     let isValidCommand = false;
-    if (!(tokens[0] in cmd)) {
-        isValidCommand = false;
+    if (tokens[0] in cmd) {
+        isValidCommand = true;
     }
     if (!isValidCommand) {
-        return { response: null, error: new Error(`Invalid command: ${tokens[0]}`) };
+        return { response: null, error: new Error(`${tokens[0]} is an Invalid command`) };
     }
     const command = wire.command({
         cmd: tokens[0],

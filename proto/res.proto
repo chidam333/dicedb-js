@@ -1,0 +1,217 @@
+syntax = "proto3";
+
+package wire;
+option go_package = "./wire";
+
+enum Status {
+    OK = 0;
+    ERR = 1;
+}
+
+message Result {
+    Status status = 1;
+    string message = 2;
+    uint64 fingerprint64 = 3;
+    oneof response {
+        TYPERes TYPERes = 11;
+        PINGRes PINGRes = 12;
+        ECHORes ECHORes = 13;
+        HANDSHAKERes HANDSHAKERes = 14;
+        EXISTSRes EXISTSRes = 15;
+        GETRes GETRes = 16;
+        SETRes SETRes = 17;
+        DELRes DELRes = 18;
+        KEYSRes KEYSRes = 19;
+        GETDELRes GETDELRes = 20;
+        GETEXRes GETEXRes = 21;
+        GETSETRes GETSETRes = 22;
+        INCRRes INCRRes = 23;
+        DECRRes DECRRes = 24;
+        INCRBYRes INCRBYRes = 25;
+        DECRBYRes DECRBYRes = 26;
+        FLUSHDBRes FLUSHDBRes = 27;
+        EXPIRERes EXPIRERes = 28;
+        EXPIREATRes EXPIREATRes = 29;
+        EXPIRETIMERes EXPIRETIMERes = 30;
+        TTLRes TTLRes = 31;
+        GETWATCHRes GETWATCHRes = 32;
+        UNWATCHRes UNWATCHRes = 33;
+        HGETRes HGETRes = 34;
+        HSETRes HSETRes = 35;
+        HGETALLRes HGETALLRes = 36;
+        HGETWATCHRes HGETWATCHRes = 37;
+        HGETALLWATCHRes HGETALLWATCHRes = 38;
+        ZADDRes ZADDRes = 39;
+        ZCOUNTRes ZCOUNTRes = 40;
+        ZRANGERes ZRANGERes = 41;
+        ZPOPMAXRes ZPOPMAXRes = 42;
+        ZREMRes ZREMRes = 43;
+        ZPOPMINRes ZPOPMINRes = 44;
+        ZRANKRes ZRANKRes = 45;
+        ZCARDRes ZCARDRes = 46;
+        ZRANGEWATCHRes ZRANGEWATCHRes = 47;
+        ZCOUNTWATCHRes ZCOUNTWATCHRes = 48;
+        ZCARDWATCHRes ZCARDWATCHRes = 49;
+        ZRANKWATCHRes ZRANKWATCHRes = 50;
+    }
+}
+
+message ZRANKWATCHRes {
+}
+
+message HGETWATCHRes {
+}
+
+message HGETALLWATCHRes {
+}
+
+message GETWATCHRes {
+}
+
+message UNWATCHRes {
+}
+
+message ZADDRes {
+    int64 count = 1;
+}
+
+message ZCOUNTRes {
+    int64 count = 1;
+}
+
+message TYPERes {
+    string type = 1;
+}
+
+message PINGRes {
+    string message = 1;
+}
+
+message HGETRes {
+    string value = 1;
+}
+
+message HSETRes {
+    int64 count = 1;
+}
+
+message HElement {
+    string key = 1;
+    string value = 2;
+}
+
+message HGETALLRes {
+    repeated HElement elements = 1;
+}
+
+message TTLRes {
+    int64 seconds = 1;
+}
+
+message EXPIRERes {
+    bool is_changed = 1;
+}
+
+message EXPIREATRes {
+    bool is_changed = 1;
+}
+
+message EXPIRETIMERes {
+    int64 unix_sec = 1;
+}
+
+message ECHORes {
+    string message = 1;
+}
+
+message EXISTSRes {
+    int64 count = 1;
+}
+
+message HANDSHAKERes {
+}
+
+message GETRes {
+    string value = 1;
+}
+
+message GETEXRes {
+    string value = 1;
+}
+
+message GETSETRes {
+    string value = 1;
+}
+
+message GETDELRes {
+    string value = 1;
+}
+
+message SETRes {
+}
+
+message DELRes {
+    int64 count = 1;
+}
+
+message FLUSHDBRes {
+}
+
+message KEYSRes {
+    repeated string keys = 1;
+}
+
+message INCRRes {
+    int64 value = 1;
+}
+
+message DECRRes {
+    int64 value = 1;
+}
+
+message INCRBYRes {
+    int64 value = 1;
+}
+
+message DECRBYRes {
+    int64 value = 1;
+}
+
+message ZElement {
+    int64 score = 1;
+    string member = 2;
+}
+
+message ZRANGERes {
+    repeated ZElement elements = 1;
+}
+
+message ZPOPMAXRes {
+    repeated ZElement elements = 1;
+}
+
+message ZREMRes {
+    int64 count = 1;
+}
+
+message ZPOPMINRes {
+    repeated ZElement elements = 1;
+}
+
+message ZRANKRes {
+    int64 rank = 1;
+    ZElement element = 2;
+}
+
+message ZCARDRes {
+    int64 count = 1;
+}
+
+message ZRANGEWATCHRes {
+}
+
+message ZCOUNTWATCHRes {
+}
+
+message ZCARDWATCHRes {
+}

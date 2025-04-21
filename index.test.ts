@@ -1,5 +1,5 @@
 import { expect, test, mock } from "bun:test";
-import { NewClient, cmd, wire } from "./src/index.js";
+import { NewClient, wire } from "./src/index.js";
 
 test("invalid port", async () => {
     const { response: client, error } = await NewClient("localhost", -1);
@@ -25,7 +25,7 @@ test("set, get, Fire, FireString", async () => {
 
     const { response, error: setError } = await client.Fire(
         wire.command({
-            cmd: cmd.SET,
+            cmd: "SET",
             args: ["k1", "lmao"],
         })
     );
@@ -46,7 +46,7 @@ test("set, get, Fire, FireString with watch", async () => {
         return;
     }
     const { response: response3, error: setError3 } = await client.FireString("GET.WATCH k1");
-    const { response: iterator, error: itrError } = await client.WatchChGetter(client);
+    const { response: iterator, error: itrError } = await client.WatchChGetter();
     console.log({ response3, setError3 });
     if (itrError || !iterator) {
         console.log("Error fetching iterator", itrError);
