@@ -6,7 +6,7 @@ import { create } from "@bufbuild/protobuf";
 import { CommandSchema } from "./proto/cmd_pb";
 import { wire } from "./wire";
 import { cmd } from "./cmd";
-import type { Cmd } from "./cmd";
+import type { Cmd, WireCommandInput } from "./cmd";
 import type { Result, Maybe } from "./result";
 import type {Client} from "./client";
 
@@ -183,19 +183,16 @@ async function FireString(client: Client, cmdStr: string): Promise<Result<Respon
         throw new Error(`Invalid command: ${tokens[0]}`);
     }
     let isValidCommand = false;
-    for (const cmdEach of Object.values(cmd)) {
-        if (tokens[0] === cmdEach) {
-            isValidCommand = true;
-            break;
-        }
+    if (!(tokens[0] in cmd)) {
+        isValidCommand = false;
     }
     if (!isValidCommand) {
         return { response: null, error: new Error(`Invalid command: ${tokens[0]}`) };
     }
     const command = wire.command({
-        cmd: tokens[0] as Cmd,
+        cmd: tokens[0],
         args: tokens.length > 1 ? tokens.slice(1) : [],
-    });
+    } as WireCommandInput);
     return Fire(client, command);
 }
 

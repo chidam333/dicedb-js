@@ -18,10 +18,10 @@ async function log(message: string) {
         console.error("Client couldn't be created", { error });
         return;
     }
-    const { response, error: setError } = await client.Fire(wire.command({ cmd: "SET", args: ["k1", "lmao"] }));
+    const { response, error: setError } = await client.Fire(wire.command({ cmd: "SET", args: ["k1", "v1"] })); 
     console.log({response})
-    const { response: response2, error: setError2 } = await client.FireString("GET k1");
-    const { response: response3, error: setError3 } = await client.FireString("GET.WATCH k1");
+    const { response: response2, error: setError2 } = await client.Fire(wire.command({ cmd: "GET", args: ["k1"] }));
+    const { response: response3, error: setError3 } = await client.Fire(wire.command({ cmd: "GET.WATCH", args: ["k1"] }));
     const { response: iterator, error: itrError } = await client.WatchChGetter();
 
     if (setError || setError2 || setError3 || itrError) {
@@ -38,7 +38,7 @@ async function log(message: string) {
         console.log("\x1b[34mPress ctrl + c to gracefully shutdown\x1b[0m");
     }, 500);
     setTimeout(() => {
-        client.Fire(wire.command({ cmd: "SET", args: ["k1", `lmao + ${Math.random()}`] }));
+        client.Fire(wire.command({ cmd: "SET", args: ["k1", "v1"] }));
     }, 2000);
     process.on("SIGINT", () => {
         client.conn?.end();
