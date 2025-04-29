@@ -30,7 +30,7 @@ npm install dicedb-sdk
 ```ts
 import { NewClient } from "dicedb-sdk";
 
-const { response:client, error } = await NewClient("localhost", 7379);
+const { response: client, error } = await NewClient("localhost", 7379-);
 if (error) {
     console.error("Failed to connect:", error);
 } else {
@@ -40,12 +40,8 @@ if (error) {
 
 ### 2. Execute Commands
 
-
 ```ts
-
-
 // Using `Fire` with a wire.command:
-
 import { wire } from "dicedb-sdk";
 
 const { response, error } = await client.Fire(wire.command({
@@ -55,18 +51,15 @@ const { response, error } = await client.Fire(wire.command({
 if (error) {
     console.error("Error executing command:", error);
 } else {
-    console.log("Response:", response?.value);
+    console.log("Response Status:", response?.status);
 }
 
-
-
 // Using `FireString` with a command string:
-
 const { response: getResponse, error: getError } = await client.FireString("GET key");
 if (getError) {
     console.error("Error executing command:", getError);
 } else {
-    console.log("Response:", getResponse?.value);
+    console.log("Response Value:", getResponse?.response.value);
 }
 ```
 
@@ -75,12 +68,12 @@ if (getError) {
 Use the `WatchChGetter` method to receive an async iterator for watching changes.
 
 ```ts
-const { response:iterator, error: watchInitError } = await client.WatchChGetter(client);
+const { response: iterator, error: watchInitError } = await client.WatchChGetter();
 if (watchInitError) {
     console.error("Error setting up watch:", watchInitError);
 } else {
     for await (const item of iterator) {
-        console.log("Watched item:", item.value);
+        console.log("Watched item:", item.response.value);
     }
 }
 ```
@@ -88,6 +81,3 @@ if (watchInitError) {
 ## Example
 
 Refer to `example.ts` for a complete example of how to use the client library.
-
-
-[]()
