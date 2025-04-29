@@ -1,12 +1,16 @@
-import type { Command, Response } from "../proto/cmd_pb";
-import { CommandSchema, ResponseSchema } from "../proto/cmd_pb";
-import { create, toBinary, fromBinary } from "@bufbuild/protobuf";
+import type { Command } from "../wire/cmd_pb";
+import type { Result } from "../wire/res_pb";
+import { CommandSchema} from "../wire/cmd_pb";
+import { ResultSchema } from "../wire/res_pb";
+import { toBinary, fromBinary } from "@bufbuild/protobuf";
 import { Socket, connect } from "net";
 
-export function read(data: Buffer): { response: Response | null; error: Error | null } {
-    let response: Response | null = null;
+export function read(data: Buffer): { response: Result | null; error: Error | null } {
+    let response: Result | null = null;
     try {
-        response = fromBinary(ResponseSchema, new Uint8Array(data.buffer, data.byteOffset, data.byteLength));
+        const messageSize = data.readUInt32BE(0);
+        const messageData = data.subarray(4, 4 + messageSize);
+        response = fromBinary(ResultSchema, new Uint8Array(messageData.buffer, messageData.byteOffset, messageData.byteLength));
     } catch (error) {
         return { response: null, error: error as Error };
     }
@@ -17,7 +21,10 @@ export function write(conn: Socket, cmd: Command): Error | null {
     // Explicit type for cmd
     let resp: Uint8Array;
     try {
-        resp = toBinary(CommandSchema, cmd);
+        const binaryData = toBinary(CommandSchema, cmd);
+        const prefix = Buffer.alloc(4);
+        prefix.writeUInt32BE(binaryData.length, 0);
+        resp = Buffer.concat([prefix, Buffer.from(binaryData)]);
     } catch (error) {
         console.error("Failed to serialize command:", error);
         return error as Error;

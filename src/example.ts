@@ -4,7 +4,7 @@ async function processIterator(iterator: AsyncIterable<any>) {
     console.log("\x1b[32mIterator processing started\x1b[0m");
     try {
         for await (const item of iterator) {
-            console.log("\x1b[32mitem", item.value, "\x1b[0m");
+            console.log("\x1b[32mitem", item, "\x1b[0m");
         }
         console.log("\x1b[32mdone with iterator\x1b[0m");
     } catch (err) {
@@ -28,9 +28,9 @@ async function log(message: string) {
         return console.error("Error processing commands:", { setError, setError2, setError3 });
     }
 
-    console.log("1st", response.value);
-    console.log("2nd", response2.value);
-    console.log("3rd", response3.value);
+    console.log("1st", response.response.value);
+    console.log("2nd", response2.response.value);
+    console.log("3rd", response3.response.value);
     console.log("\x1b[32mIterator fetched successfully\x1b[0m");
     processIterator(iterator!);
     setTimeout(() => {

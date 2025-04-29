@@ -1,23 +1,20 @@
 import { randomUUID } from "crypto";
 import { Socket, connect } from "net";
 import { read, write } from "./io/io";
-import type {Command, Response} from "./proto/cmd_pb";
-
-// working on porting to newer version of proto
-// import type { Command } from "./wire/cmd_pb";
-// import type { Result } from "./wire/res_pb";
-
 import { create } from "@bufbuild/protobuf";
-import { CommandSchema } from "./proto/cmd_pb";
+import { CommandSchema } from "./wire/cmd_pb";
 import { wire } from "./wire";
 import { cmd } from "./cmd";
+import type { Command } from "./wire/cmd_pb";
+import type { Result } from "./wire/res_pb";
 import type { Cmd, WireCommandInput } from "./cmd";
-import type { Result, Maybe } from "./result";
+import type { Outcome, Maybe } from "./result";
 import type {Client} from "./client";
 
 const SECOND = 1000;
 
 function simpleData(client: Client, data: Buffer) {
+
     const { response, error } = read(data);
     if (error) {
         console.error("Error reading data:", error);
@@ -36,7 +33,7 @@ function simpleWatch(client: Client, data: Buffer) {
     client.watchCh.push(response);
 }
 
-async function createWatchIterator(client: Client): Promise<AsyncIterable<Response>> {
+async function createWatchIterator(client: Client): Promise<AsyncIterable<Result>> {
     return {
         [Symbol.asyncIterator]() {
             return {
@@ -60,7 +57,7 @@ async function createWatchIterator(client: Client): Promise<AsyncIterable<Respon
     };
 }
 
-async function WatchChGetter(client: Client): Promise<Result<AsyncIterable<Response>, Error>> {
+async function WatchChGetter(client: Client): Promise<Outcome<AsyncIterable<Result>, Error>> {
     if (client.watchIterator != null) {
         return { response: client.watchIterator, error: null };
     }
@@ -92,7 +89,7 @@ async function newConn(
     port: number,
     client: Client,
     onData: (client: Client, data: Buffer) => void
-): Promise<Result<Socket, Error>> {
+): Promise<Outcome<Socket, Error>> {
     return await new Promise((resolve) => {
         const conn = connect({ host, port }, () => {
             conn.setKeepAlive(true, 5 * SECOND);
@@ -119,8 +116,8 @@ async function newConn(
     });
 }
 
-async function NewClient(host: string, port: number, option?: Partial<Client>): Promise<Result<Client, Error>> {
-    const watchCh: Response[] = [];
+async function NewClient(host: string, port: number, option?: Partial<Client>): Promise<Outcome<Client, Error>> {
+    const watchCh: Result[] = [];
     const client: Client = {
         id: randomUUID(),
         conn: null,
@@ -159,7 +156,7 @@ async function NewClient(host: string, port: number, option?: Partial<Client>): 
 }
 
 //TODO : remove new Error and use custom error string
-async function fire(client: Client, cmd: any, conn: Socket): Promise<Result<Response, Error>> {
+async function fire(client: Client, cmd: any, conn: Socket): Promise<Outcome<Result, Error>> {
     if (!conn) {
         return { response: null, error: new Error("Client not connected") };
     }
@@ -169,6 +166,7 @@ async function fire(client: Client, cmd: any, conn: Socket): Promise<Result<Resp
     while (!client.data) {
         if (Date.now() - startTime > 5000) {
             return { response: null, error: new Error(`Timeout waiting for response to command`) };
+            break;
         }
         await new Promise((resolve) => setTimeout(resolve, 100));
     }
@@ -177,11 +175,11 @@ async function fire(client: Client, cmd: any, conn: Socket): Promise<Result<Resp
     return result;
 }
 
-async function Fire(client: Client, cmd: Command): Promise<Result<Response, Error>> {
+async function Fire(client: Client, cmd: Command): Promise<Outcome<Result, Error>> {
     return fire(client, cmd, client.conn!);
 }
 
-async function FireString(client: Client, cmdStr: string): Promise<Result<Response, Error>> {
+async function FireString(client: Client, cmdStr: string): Promise<Outcome<Result, Error>> {
     cmdStr = cmdStr.trim();
     const tokens = cmdStr.split(" ");
     if (!Object.values(cmd).includes(tokens[0] as Cmd)) {
@@ -201,5 +199,5 @@ async function FireString(client: Client, cmdStr: string): Promise<Result<Respon
     return Fire(client, command);
 }
 
-export type { Command, Response, Client, Cmd };
+export type { Command, Result as Response, Client, Cmd };
 export { CommandSchema, create, wire, NewClient };

@@ -1,4 +1,4 @@
-export type Result<ResponseType, ErrorType> =
+export type Outcome<ResponseType, ErrorType> =
     | { response: ResponseType; error: null }
     | { response: null; error: ErrorType };
 
