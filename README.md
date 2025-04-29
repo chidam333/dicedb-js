@@ -11,7 +11,7 @@
 Follow [dicedb.io](https://dicedb.io/get-started/installation/) (or) just use this docker command:
 
 ```bash
-  docker run -p 7379:7379 dicedb/dicedb:latest 
+  docker run -p 7379:7379 dicedb/dicedb:v1.0.7
 ```
 
 ## Installation
