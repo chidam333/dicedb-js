@@ -3,9 +3,9 @@ import type { Result } from "../wire/res_pb";
 import { CommandSchema} from "../wire/cmd_pb";
 import { ResultSchema } from "../wire/res_pb";
 import { toBinary, fromBinary } from "@bufbuild/protobuf";
-import { Socket} from "net";
+import { Socket, connect } from "net";
 
-export function read(data: Buffer): { response: Result | null; error: Error | null } {
+export function receive(data: Buffer): { response: Result | null; error: Error | null } {
     let response: Result | null = null;
     try {
         const messageSize = data.readUInt32BE(0);
@@ -17,7 +17,7 @@ export function read(data: Buffer): { response: Result | null; error: Error | nu
     return { response, error: null };
 }
 
-export function write(conn: Socket, cmd: Command): Error | null {
+export function send(conn: Socket, cmd: Command): Error | null {
     // Explicit type for cmd
     let resp: Uint8Array;
     try {

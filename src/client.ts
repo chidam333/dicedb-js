@@ -17,35 +17,6 @@ export interface Client {
      * ```
      * const { response, error } = await client.Fire(wire.command({ cmd: "GET", args: ["k"] }));
      * ```
-     * ```
-     * 
-     * 
-     * ```
-     * Type definition of Response
-     * ```
-        export type Response = Message<"wire.Response"> & {
-        err: string;
-        value: {
-            value: boolean;
-            case: "vNil";
-        } | {
-            value: bigint;
-            case: "vInt";
-        } | {  
-            value: string;
-            case: "vStr";
-        } | {  
-            value: number;
-            case: "vFloat";
-        } | {  
-            value: Uint8Array;
-            case: "vBytes";
-        } | { case: undefined; value?: undefined };
-        attrs?: JsonObject;
-        vList: Value[];
-        vSsMap: { [key: string]: string };
-        };
-        ```
      * @returns `{ response: Response, error: Error }`
      */
     Fire: (cmd: Command) => Promise<Outcome<Result, Error>>;
