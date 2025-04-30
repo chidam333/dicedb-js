@@ -1,8 +1,8 @@
 import { WireError } from "../wire/error";
-import type { Outcome } from "../result";
+import type { Maybe, Outcome } from "../result";
 
 export interface Wire {
-    send(data: Uint8Array): Outcome<WireError, null>;
-    receive(): Promise<Outcome<Uint8Array, WireError>>;
+    send(data: Uint8Array): Maybe<WireError>;
+    receive(data:Buffer): Outcome<Uint8Array, WireError>;
     close(): void;
 }

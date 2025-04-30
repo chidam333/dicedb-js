@@ -1,9 +1,24 @@
 import type { Command } from "../wire/cmd_pb";
 import type { Result } from "../wire/res_pb";
-import { CommandSchema} from "../wire/cmd_pb";
+import { CommandSchema } from "../wire/cmd_pb";
 import { ResultSchema } from "../wire/res_pb";
 import { toBinary, fromBinary } from "@bufbuild/protobuf";
 import { Socket, connect } from "net";
+import type { Wire } from "./wire";
+import { newTcpWire } from "./tcp_wire";
+
+type ProtobufTcpWire = {
+    tcpWire: Wire;
+};
+
+export type ClientWire = ProtobufTcpWire;
+
+export function createProtobufTcpWire(maxMsgSize: number, conn: Socket): ProtobufTcpWire {
+    const protobufTcpWire: ProtobufTcpWire = {
+        tcpWire: newTcpWire(maxMsgSize, conn),
+    };
+    return protobufTcpWire;
+}
 
 export function receive(data: Buffer): { response: Result | null; error: Error | null } {
     let response: Result | null = null;
