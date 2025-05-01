@@ -6,6 +6,8 @@ import { toBinary, fromBinary } from "@bufbuild/protobuf";
 import { Socket, connect } from "net";
 import type { Wire } from "./wire";
 import { newTcpWire } from "./tcp_wire";
+import { ErrKind, WireError } from "../wire/error";
+import type { Maybe, Outcome } from "../result";
 
 type ProtobufTcpWire = {
     tcpWire: Wire;
@@ -20,36 +22,26 @@ export function createProtobufTcpWire(maxMsgSize: number, conn: Socket): Protobu
     return protobufTcpWire;
 }
 
-export function receive(data: Buffer): { response: Result | null; error: Error | null } {
-    let response: Result | null = null;
+export function send(protobufWire: ProtobufTcpWire, cmd: Command): Maybe<WireError> {
+    let binaryData: Uint8Array;
     try {
-        const messageSize = data.readUInt32BE(0);
-        const messageData = data.subarray(4, 4 + messageSize);
-        response = fromBinary(ResultSchema, new Uint8Array(messageData.buffer, messageData.byteOffset, messageData.byteLength));
+        binaryData = toBinary(CommandSchema, cmd);
     } catch (error) {
-        return { response: null, error: error as Error };
+        return new WireError(ErrKind.CorruptMessage, new Error("Failed to serialize command: " + error));
     }
-    return { response, error: null };
+    return protobufWire.tcpWire.send(binaryData);
 }
 
-export function send(conn: Socket, cmd: Command): Error | null {
-    // Explicit type for cmd
-    let resp: Uint8Array;
-    try {
-        const binaryData = toBinary(CommandSchema, cmd);
-        const prefix = Buffer.alloc(4);
-        prefix.writeUInt32BE(binaryData.length, 0);
-        resp = Buffer.concat([prefix, Buffer.from(binaryData)]);
-    } catch (error) {
-        console.error("Failed to serialize command:", error);
-        return error as Error;
+export function receive(protobufTcpWire: ProtobufTcpWire, data: Buffer): Outcome<Result, WireError> {
+    const { response: messageDataBinary, error: receiveError } = protobufTcpWire.tcpWire.receive(data);
+    if (receiveError) {
+        return { response: null, error: receiveError };
     }
-
+    let result: Result;
     try {
-        conn.write(resp);
-        return null;
+        result = fromBinary(ResultSchema, messageDataBinary);
     } catch (error) {
-        console.error("Failed to write to socket:", error);
-        return error as Error;
+        return { response: null, error: new WireError(ErrKind.CorruptMessage, new Error("Failed to deserialize result: " + error)) };
     }
+    return { response: result, error: null };
 }
