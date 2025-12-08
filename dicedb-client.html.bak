@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DiceDB Client</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #1a1a1a;
+            color: #ffffff;
+            margin: 0;
+            padding: 40px 20px;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        h3 {
+            font-size: 2rem;
+            font-weight: 600;
+            margin: 0;
+            text-align: center;
+        }
+        
+        .highlight {
+            color: cyan;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h3>A <span class="highlight">blazingly fast</span> type safe client to interact with DiceDB</h3>
+    </div>
+</body>
+</html>
