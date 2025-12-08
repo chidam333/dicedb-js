@@ -4,7 +4,7 @@
 
 # dicedb-sdk
 
-<h3>A <span style="color: cyan;">blazingly fast</span> type safe client to interact with DiceDB</h3>
+<h3>A <span style="color: cyan;">blazingly fast</span> typee safe client to interact with DiceDB</h3>
 
 <br/>
 
